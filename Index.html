@@ -57,3 +57,240 @@ canvas{width:100%;height:100%;display:block}
 </style>
 </head>
 <body>
+<div id="start">
+  <input id="kw" type="text" placeholder="keyword…" autocomplete="off" autofocus>
+  <small>press enter</small>
+  <div id="pbox" hidden style="margin-top:14px;text-align:center"><textarea id="pj" rows="4" style="width:min(80vw,520px);font-size:.8rem" placeholder="open the sheet link, select all, copy, paste here"></textarea><br><button class="pill" id="pgo">use this data</button></div>
+  <div class="tools"><span id="count"></span> · <a id="sync">sync sheet</a> · <a id="paste">paste JSON</a> · <a id="load">upload file</a> · <a id="reset">use samples</a>
+  <input id="file" type="file" accept=".json,application/json" hidden></div>
+</div>
+<div id="app">
+  <div class="top">
+    <button class="pill" id="back">← new keyword</button>
+    <div class="info"><div id="stats"></div><label><input type="checkbox" id="rel" checked> include related games</label></div>
+  </div>
+  <div id="wrap"><canvas id="cv"></canvas><button id="spin">SPIN</button></div>
+  <div id="result"></div>
+  <div id="pop"><div id="popcard"></div></div>
+</div>
+<script>
+// ---------- sample data (replaced when you load your own JSON) ----------
+const SAMPLE=[
+{title:"Don’t Starve Together",genre:"Survival",description:"Survive freezing winters and wild creatures in a hand-drawn world."},
+{title:"Stardew Valley",genre:"Farming Sim",description:"Plant crops each season, harvest in autumn and fish in summer."},
+{title:"Hades",genre:"Roguelike",description:"Battle out of the underworld with fast action."},
+{title:"Subnautica: Below Zero",genre:"Survival",description:"Explore an arctic ocean of ice, snow and frozen caves."},
+{title:"Spiritfarer",genre:"Cozy",description:"A gentle boat-building game about caring for spirits."},
+{title:"Slay the Spire",genre:"Deckbuilder",description:"Climb a spire fighting monsters with cards."},
+{title:"Frostpunk",genre:"City Builder",description:"Keep your city alive through a global blizzard."},
+{title:"Animal Crossing: New Horizons",genre:"Life Sim",description:"Seasonal events, snowmen in winter and cherry blossoms in spring."},
+{title:"Hollow Knight",genre:"Metroidvania",description:"Explore a ruined insect kingdom."},
+{title:"Alba: A Wildlife Adventure",genre:"Adventure",description:"Spend a summer on a Mediterranean island saving wildlife."},
+{title:"Phasmophobia",genre:"Horror",description:"Hunt ghosts in haunted houses with friends."},
+{title:"The Long Dark",genre:"Survival",description:"Survive in a frozen Canadian wilderness after a disaster."},
+{title:"Cult of the Lamb",genre:"Roguelike",description:"Run a woodland cult and spread your word."},
+{title:"Wylde Flowers",genre:"Cozy",description:"Farm, brew potions and bloom as a witch in spring."}
+];
+// ---------- seasons ----------
+const M=new Date().getMonth();
+const season=M<2||M==11?"winter":M<5?"spring":M<8?"summer":"autumn";
+const PAL={winter:["#5b8fc9","#8fb8e3","#3e6ea8","#a9cdea","#6f9bd1","#d8ecf8"],
+spring:["#e87aa3","#8fcf9a","#f2b5cf","#5fbf7a","#f7d36b","#b99ae0"],
+summer:["#f5a623","#2cb5d6","#ffd23f","#ee6c4d","#3fc1a5","#f78fb3"],
+autumn:["#c8561e","#e09a2d","#8c3b14","#d97b3a","#a8692a","#b5382a"]};
+const FX={winter:["❄️","❅","❆"],spring:["🌸","🌷","🍃"],summer:["☀️","🌊","🌴"],autumn:["🍂","🍁","🎃"]};
+document.body.classList.add(season);
+// ---------- related-theme dictionary ----------
+const THEMES={
+winter:"winter snow snowy ice icy frost frozen freeze arctic antarctic antarctica blizzard cold polar penguin sled ski holiday christmas cozy fireplace yeti tundra",
+christmas:"christmas holiday santa gift present winter snow elf reindeer festive cozy",
+snow:"snow snowy winter ice frost frozen arctic blizzard cold polar mountain ski sled",
+spring:"spring bloom blossom flower garden farm farming plant harvest rain rebirth growth nature",
+summer:"summer beach sun sunny island ocean sea tropical vacation surf swim road trip holiday",
+autumn:"autumn fall harvest leaves pumpkin spooky cozy forest farm halloween thanksgiving",
+halloween:"halloween horror ghost haunted spooky witch zombie vampire monster skeleton pumpkin curse demon",
+horror:"horror scary ghost haunted fear terror zombie monster nightmare survival creepy dark",
+cozy:"cozy cozy relaxing gentle peaceful farm farming cooking garden life sim cute wholesome",
+space:"space galaxy planet star alien sci-fi orbit rocket cosmos station",
+ocean:"ocean sea underwater fishing fish boat sailing island diving pirate beach",
+farm:"farm farming crops harvest plant garden animals village life sim",
+fantasy:"fantasy magic wizard dragon sword quest kingdom medieval witch spirit",
+romance:"romance love dating relationship heart wedding valentine",
+survival:"survival survive wilderness crafting craft hunger cold frozen wasteland",
+racing:"racing race car drive speed kart motor rally",
+puzzle:"puzzle logic brain riddle match escape"};
+function relatedTerms(k){
+  const out=new Set();
+  for(const [key,list] of Object.entries(THEMES)){
+    const words=list.split(" ");
+    if(key===k||words.includes(k)||key.startsWith(k)&&k.length>2) words.forEach(w=>out.add(w));
+  }
+  out.delete(k); return [...out];
+}
+// ---------- data ----------
+let games=[];
+function norm(raw){
+  let arr=Array.isArray(raw)?raw:(raw&&(raw.games||raw.items||raw.events||Object.values(raw).find(Array.isArray)))||[];
+  return arr.map(g=>{
+    if(typeof g==="string") return {title:g,genre:"",description:""};
+    const lk={};for(const k in g)lk[k.toLowerCase()]=g[k];
+    const dec=s=>s.replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">");
+    const pick=(...ks)=>{for(const k of ks){const v=lk[k];if(v!=null&&v!=="")return dec(Array.isArray(v)?v.join(", "):String(v))}return ""};
+    return {title:pick("title","name","game","summary"),
+      genre:pick("genre","genres","genres[*].description","tags","category","categories"),
+      description:pick("description","short description","desc","summary_text","notes","about","details"),
+      date:pick("release date","date"),url:pick("steam url","url"),trailer:pick("trailer","video")};
+  }).filter(g=>g.title);
+}
+function setGames(a){games=a;document.getElementById("count").textContent=games.length+" games loaded"}
+try{const s=localStorage.getItem("gw_games");setGames(s?norm(JSON.parse(s)):norm(SAMPLE))}catch(e){setGames(norm(SAMPLE))}
+const $=id=>document.getElementById(id);
+$("load").onclick=()=>$("file").click();
+$("file").onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  f.text().then(t=>{const raw=JSON.parse(t);const g=norm(raw);
+    if(!g.length){alert("Couldn’t find any games in that file.");return}
+    setGames(g);try{localStorage.setItem("gw_games",JSON.stringify(g))}catch(_){}
+  }).catch(()=>alert("That file isn’t valid JSON."));
+};
+$("reset").onclick=()=>{try{localStorage.removeItem("gw_games")}catch(_){}setGames(norm(SAMPLE))};
+const SHEET="https://opensheet.elk.sh/1ritGjWTo1Vr0kO3veyx0rXAMoC4PCN4d6SqHuySyoZM/10";
+function ingest(t){try{const g=norm(JSON.parse(t));if(!g.length){alert("No games found in that data.");return}setGames(g);try{localStorage.setItem("gw_games",JSON.stringify(g))}catch(_){}$("pbox").hidden=true;return true}catch(e){alert("That doesn’t look like valid JSON.")}}
+$("sync").onclick=()=>{$("count").textContent="syncing…";fetch(SHEET).then(r=>r.text()).then(t=>{if(!ingest(t))setGames(games)}).catch(()=>{setGames(games);$("pbox").hidden=false;alert("This page can’t reach the sheet directly. Open the sheet link, copy everything, and paste it into the box.")})};
+$("paste").onclick=()=>{$("pbox").hidden=!$("pbox").hidden};
+$("pgo").onclick=()=>ingest($("pj").value);
+// Auto-sync from the sheet when hosted on a normal website
+if(location.protocol.startsWith("http")){fetch(SHEET).then(r=>r.json()).then(raw=>{const g=norm(raw);if(g.length){setGames(g);try{localStorage.setItem("gw_games",JSON.stringify(g))}catch(_){}}}).catch(()=>{})}
+// ---------- matching ----------
+const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+const hit=(text,t)=>new RegExp("\\b"+esc(t.replace(/s$/,"")),"i").test(text);
+let direct=[],related=[],current="",pool=[];
+function search(k){
+  current=k;k=k.toLowerCase().trim();
+  const rel=relatedTerms(k);
+  direct=[];related=[];
+  for(const g of games){
+    const hay=g.title+" "+g.genre+" "+g.description;
+    if(hit(hay,k)) direct.push(g);
+    else if(rel.some(t=>hit(hay,t))) related.push(g);
+  }
+}
+function buildPool(){
+  const p=direct.concat($("rel").checked?related:[]);
+  pool=p.slice(0,24);
+  $("stats").textContent=`“${current}” · ${direct.length} direct`+($("rel").checked?` + ${related.length} related`:"")+(p.length>24?" (showing 24)":"");
+}
+// ---------- wheel ----------
+const cv=$("cv"),ctx=cv.getContext("2d");
+let rot=0,spinning=false,raf=0,winner=-1;
+function size(){const d=devicePixelRatio||1,w=cv.clientWidth;cv.width=cv.height=w*d;ctx.setTransform(d,0,0,d,0,0)}
+function draw(){
+  const w=cv.clientWidth,c=w/2,r=c-10,n=pool.length;
+  ctx.clearRect(0,0,w,w);
+  if(!n){ctx.fillStyle="rgba(0,0,0,.4)";ctx.font="20px Georgia";ctx.textAlign="center";ctx.fillText("No games found",c,c-80);return}
+  const step=2*Math.PI/n,pal=PAL[season];
+  for(let i=0;i<n;i++){
+    const a=rot+i*step;
+    ctx.beginPath();ctx.moveTo(c,c);ctx.arc(c,c,r,a,a+step);ctx.closePath();
+    ctx.fillStyle=pal[i%pal.length];ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.8)";ctx.lineWidth=2;ctx.stroke();
+    ctx.save();ctx.translate(c,c);ctx.rotate(a+step/2);
+    ctx.fillStyle="#fff";ctx.shadowColor="rgba(0,0,0,.45)";ctx.shadowBlur=3;
+    ctx.font=`700 ${Math.max(10,Math.min(18,w/(n*1.5)+7))}px Georgia`;
+    ctx.textAlign="right";ctx.textBaseline="middle";
+    let t=pool[i].title;if(t.length>22)t=t.slice(0,21)+"…";
+    ctx.fillText(t,r-14,0);ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(c,c,r,0,7);ctx.lineWidth=8;ctx.strokeStyle="#fff";ctx.stroke();
+  // pointer
+  ctx.beginPath();ctx.moveTo(c-14,2);ctx.lineTo(c+14,2);ctx.lineTo(c,32);ctx.closePath();
+  ctx.fillStyle="#d22";ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();ctx.fill();
+}
+let last=0;
+function idle(t){
+  if(spinning)return;
+  rot+=(t-last)*0.0002;last=t;draw();raf=requestAnimationFrame(idle);
+}
+function startIdle(){cancelAnimationFrame(raf);last=performance.now();raf=requestAnimationFrame(idle)}
+function spin(){
+  if(spinning||!pool.length)return;
+  spinning=true;cancelAnimationFrame(raf);$("spin").disabled=true;$("result").innerHTML="";
+  const start=rot,total=(6+Math.random()*3)*2*Math.PI+Math.random()*2*Math.PI,dur=5200,t0=performance.now();
+  (function f(t){
+    const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,4);
+    rot=start+total*e;draw();
+    if(p<1)return requestAnimationFrame(f);
+    spinning=false;$("spin").disabled=false;finish();startIdle();
+  })(t0);
+}
+function finish(){
+  const n=pool.length,step=2*Math.PI/n;
+  let ang=((-Math.PI/2-rot)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+  winner=Math.floor(ang/step)%n;
+  const g=pool[winner],isDirect=direct.includes(g);
+  $("result").innerHTML=`<h2></h2><p></p><button class="pill" id="rm">remove & spin again</button>`;
+  $("result").querySelector("h2").textContent="🎉 "+g.title;
+  const p=$("result").querySelector("p");
+  p.textContent=(g.genre?g.genre+" · ":"")+(g.date?"releases "+g.date+" · ":"")+(isDirect?"keyword match":"related pick");
+  if(/^https?:\/\//.test(g.url||"")){const a=document.createElement("a");a.href=g.url;a.target="_blank";a.rel="noopener";a.textContent=" · Steam page";a.style.color="var(--accent)";p.appendChild(a)}
+  $("rm").onclick=()=>{pool.splice(winner,1);$("result").innerHTML="";draw()};
+  setTimeout(()=>showPop(g),400);
+}
+function ytId(u){const m=(u||"").match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/);return m&&m[1]}
+function fmtDate(s){
+  const m=(s||"").match(/(\d{1,2})\s+([A-Za-z]{3})/);if(!m)return s||"";
+  const full=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const i=full.findIndex(x=>x.slice(0,3).toLowerCase()===m[2].toLowerCase());
+  return i<0?s:(+m[1])+" "+full[i]+" "+new Date().getFullYear();
+}
+function hidePop(){$("pop").classList.remove("show");$("popcard").textContent=""}
+function showPop(g){
+  const c=$("popcard");c.textContent="";
+  const add=(tag,txt,cls)=>{const e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;c.appendChild(e);return e};
+  add("button","×","x").onclick=hidePop;
+  add("h2",g.title+(g.genre?" ("+g.genre+")":""));
+  add("div",fmtDate(g.date)||"Release date unknown","pd");
+  const id=ytId(g.trailer);
+  if(id||/\.mp4/.test(g.trailer||"")){
+    const v=add("div",null,"vid");
+    if(id){const f=document.createElement("iframe");f.referrerPolicy="strict-origin-when-cross-origin";f.src="https://www.youtube.com/embed/"+id+"?rel=0&playsinline=1"+(location.origin.startsWith("http")?"&origin="+encodeURIComponent(location.origin):"");f.allowFullscreen=true;f.setAttribute("allow","fullscreen; picture-in-picture");f.title="Trailer";v.appendChild(f)}
+    else{const m=document.createElement("video");m.src=g.trailer;m.controls=true;m.playsInline=true;v.appendChild(m)}
+    if(id){const s=add("p","Video not loading? ","sm");const a=document.createElement("a");a.href=g.trailer;a.target="_blank";a.rel="noopener";a.textContent="Watch on YouTube";s.appendChild(a)}
+  }else add("p","No trailer listed for this game.","sm");
+  if(/^https?:\/\//.test(g.url||"")){const p=add("p",null);const a=document.createElement("a");a.href=g.url;a.target="_blank";a.rel="noopener";a.textContent="Store page →";p.appendChild(a)}
+  add("p",g.description||"No description available.","desc");
+  $("pop").classList.add("show");
+}
+$("pop").onclick=e=>{if(e.target.id==="pop")hidePop()};
+$("spin").onclick=spin;
+$("rel").onchange=()=>{buildPool();$("result").innerHTML="";draw()};
+// ---------- flow ----------
+function confetti(){
+  document.querySelectorAll(".fx").forEach(e=>e.remove());
+  for(let i=0;i<16;i++){
+    const s=document.createElement("span");s.className="fx";
+    s.textContent=FX[season][i%3];
+    s.style.left=Math.random()*100+"vw";s.style.fontSize=(14+Math.random()*18)+"px";
+    s.style.animationDuration=(9+Math.random()*10)+"s";s.style.animationDelay=(-Math.random()*15)+"s";
+    document.body.appendChild(s);
+  }
+}
+function go(k){
+  search(k);buildPool();
+  $("start").style.display="none";$("app").style.display="flex";
+  document.body.classList.add("themed");confetti();
+  size();$("result").innerHTML=pool.length?"":"<p>Nothing matched. Try another keyword.</p>";
+  draw();startIdle();
+}
+$("kw").addEventListener("keydown",e=>{if(e.key==="Enter"&&$("kw").value.trim())go($("kw").value)});
+$("back").onclick=()=>{
+  cancelAnimationFrame(raf);spinning=false;$("spin").disabled=false;
+  $("app").style.display="none";$("start").style.display="flex";
+  document.body.classList.remove("themed");
+  document.querySelectorAll(".fx").forEach(e=>e.remove());
+  $("kw").value="";$("kw").focus();
+};
+addEventListener("resize",()=>{if($("app").style.display==="flex"){size();draw()}});
+</script>
+</body>
+</html>
