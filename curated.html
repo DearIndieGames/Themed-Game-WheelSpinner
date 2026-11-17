@@ -27,10 +27,10 @@ body.themed.autumn{--card:rgba(255,255,255,.78);--bg2:#fbe3b8;--bg3:#d9823b;--fg
 /* Spotlight pills: a wrapping row of buttons under the hint */
 /* Spotlight pills. The font stack falls back to similar geometric fonts if League Spartan can't load. */
 #spotsHead,#spots button{font-family:"League Spartan","Montserrat","Futura","Century Gothic",system-ui,sans-serif;text-transform:uppercase}
-#spotsHead{margin:20px 0 0;font-size:.85rem;font-weight:800;letter-spacing:.14em;color:var(--fg);text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:2px}
-#spots{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:12px;max-width:min(94vw,680px)}
-#spots button{font-size:1rem;font-weight:800;letter-spacing:.06em;line-height:1;border:1px solid rgba(255,255,255,.14);
-  background:#1d1b22;border-radius:99px;padding:11px 18px 9px;cursor:pointer;   /* solid charcoal pill */
+#spotsHead{margin:calc(20px + 1.33rem) 0 0;font-size:1.7rem;font-weight:800;letter-spacing:.14em;color:var(--fg);text-decoration:underline;text-underline-offset:8px;text-decoration-thickness:3px}
+#spots{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:16px;max-width:min(94vw,820px)}
+#spots button{font-size:1.2rem;font-weight:800;letter-spacing:.06em;line-height:1;border:1px solid rgba(255,255,255,.14);
+  background:#1d1b22;border-radius:99px;padding:14px 24px 11px;cursor:pointer;   /* solid charcoal pill */
   box-shadow:0 2px 6px rgba(0,0,0,.18);transition:transform .15s,box-shadow .15s}
 #spots button:hover,#spots button:focus-visible{transform:translateY(-2px);box-shadow:0 5px 12px rgba(0,0,0,.28);outline:none}
 #spots button:focus-visible{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--fg)}   /* visible ring for keyboard users */
@@ -60,8 +60,8 @@ canvas{width:100%;height:100%;display:block}
 #spin:disabled{opacity:.7;cursor:default}
 #result{margin-top:14px;min-height:5.2em;text-align:center;padding:0 16px;max-width:90vw}
 #result h2{margin:0;font-size:clamp(1.4rem,5vw,2.2rem)}
-#result p{margin:.3em 0;color:var(--fg);opacity:.75;font-size:.9rem}
-#result button{margin:4px}
+#result p{margin:.5em 0 0;color:var(--fg);opacity:.75;font-size:.95rem;line-height:1.5}
+#result button{margin:18px 4px 4px}   /* gap above "remove & spin again" */
 .fx{position:fixed;top:-8vh;pointer-events:none;animation:fall linear infinite;z-index:1;opacity:.8}
 @keyframes fall{to{transform:translateY(115vh) rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.fx{display:none}}
@@ -81,7 +81,7 @@ canvas{width:100%;height:100%;display:block}
 #live{position:absolute;top:calc(env(safe-area-inset-top,0px) + 78px);left:50%;transform:translateX(-50%);background:var(--card);padding:11px 22px;border-radius:99px;max-width:88vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:3;font-size:1.25rem}
 #back{font-size:1.15rem;padding:12px 22px}
 #live:empty{display:none}
-#terms{font-size:.75rem;opacity:.85;text-align:center;padding:2px 16px;max-width:92vw}
+#terms{margin-top:22px;font-size:.9rem;line-height:1.55;opacity:.85;text-align:center;padding:2px 16px;max-width:min(92vw,860px)}
 /* Dev-only keyword report: a full-screen scrollable panel above everything else */
 #rep{position:fixed;inset:0;z-index:30;background:var(--bg);color:var(--fg);overflow:auto;padding:16px;box-sizing:border-box;font-size:.9rem}
 #rep[hidden]{display:none}
@@ -749,7 +749,7 @@ function finish(){
   // If the game is in a spotlight group, say which showcase featured it
   const sp=spotsOf(g);
   if(sp.length)p.append(" · "+[...new Set(spotLines(g).map(l=>l.text))].join(" · "));
-  if(/^https?:\/\//.test(g.url||"")){const a=document.createElement("a");a.href=g.url;a.target="_blank";a.rel="noopener";a.textContent=" · Steam page";a.style.color="var(--accent)";p.appendChild(a)}
+  if(/^https?:\/\//.test(g.url||"")){const a=document.createElement("a");a.href=g.url;a.target="_blank";a.rel="noopener";a.textContent="Steam page";a.style.color="var(--accent)";p.append(" · ");p.appendChild(a)}
   $("rm").onclick=()=>{pool.splice(winner,1);$("result").innerHTML="";draw()};
   setTimeout(()=>showPop(g),400);
 }
