@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Game Wheel (curated)</title>
+<style>
+:root{--bg:#fff;--fg:#1d1d1f;--muted:#777;--accent:#3b6fd4;--card:rgba(255,255,255,.85);--bg2:#fff;--bg3:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111;--fg:#f2f2f2;--muted:#999;--card:rgba(30,30,30,.85)}}
+:root[data-theme="dark"]{--bg:#111;--fg:#f2f2f2;--muted:#999;--card:rgba(30,30,30,.85)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:Georgia,"Times New Roman",serif;overflow:hidden}
+body.themed{background:linear-gradient(160deg,var(--bg2),var(--bg3));transition:background .6s}
+body.themed.winter{--card:rgba(255,255,255,.78);--bg2:#dff0fb;--bg3:#a9c7e8;--fg:#17324d;--accent:#2f6fb0}
+body.themed.spring{--card:rgba(255,255,255,.78);--bg2:#fdeef4;--bg3:#bfe6c4;--fg:#3b2a3a;--accent:#d9568a}
+body.themed.summer{--card:rgba(255,255,255,.78);--bg2:#fff3b8;--bg3:#7fd6e8;--fg:#17394a;--accent:#f08a1c}
+body.themed.autumn{--card:rgba(255,255,255,.78);--bg2:#fbe3b8;--bg3:#d9823b;--fg:#43210f;--accent:#b4491c}
+#start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:5}
+#start input{font:inherit;font-size:clamp(1.6rem,6vw,2.6rem);text-align:center;border:0;border-bottom:2px solid var(--muted);background:transparent;color:var(--fg);outline:none;width:min(80vw,520px);padding:.4em}
+#start input:focus{border-color:var(--accent)}
+#start small{margin-top:1.2em;color:var(--muted);font-size:.95rem;text-align:center;max-width:min(80vw,520px);line-height:1.4}
+#count{font-size:1.1rem}
+#start .tools{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);font-size:.8rem;color:var(--muted)}
+#start .tools a{color:var(--muted);cursor:pointer;text-decoration:underline}
+#app{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding-top:env(safe-area-inset-top,0px)}
+.top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;z-index:3;font-size:.9rem}
+.pill{background:var(--card);border:0;border-radius:99px;padding:8px 14px;color:var(--fg);font:inherit;cursor:pointer;backdrop-filter:blur(6px)}
+.info{text-align:right}
+.info label{display:block;margin-top:6px;cursor:pointer}
+#wrap{position:relative;width:min(92vw,76vh,640px);aspect-ratio:1}
+canvas{width:100%;height:100%;display:block}
+#spin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24%;aspect-ratio:1;border-radius:50%;border:5px solid #fff;background:var(--accent);color:#fff;font:700 clamp(1rem,4vw,1.6rem) Georgia,serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+#spin:active{transform:translate(-50%,-50%) scale(.95)}
+#spin:disabled{opacity:.7;cursor:default}
+#result{margin-top:14px;min-height:5.2em;text-align:center;padding:0 16px;max-width:90vw}
+#result h2{margin:0;font-size:clamp(1.4rem,5vw,2.2rem)}
+#result p{margin:.3em 0;color:var(--fg);opacity:.75;font-size:.9rem}
+#result button{margin:4px}
+.fx{position:fixed;top:-8vh;pointer-events:none;animation:fall linear infinite;z-index:1;opacity:.8}
+@keyframes fall{to{transform:translateY(115vh) rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.fx{display:none}}
+#pop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:20;padding:16px}
+#pop.show{display:flex}
+#popcard{position:relative;background:#fffdf8;color:#2a2a2a;border-radius:10px;width:min(94vw,560px);max-height:88vh;overflow:auto;padding:18px 18px 20px;box-shadow:0 12px 40px rgba(0,0,0,.4);box-sizing:border-box}
+#pop.show #popcard{animation:bounce .65s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes bounce{0%{transform:scale(.3) translateY(80px);opacity:0}55%{transform:scale(1.07);opacity:1}78%{transform:scale(.97)}100%{transform:scale(1)}}
+#popcard h2{margin:0 28px 4px 0;font-size:1.35rem;line-height:1.25}
+#popcard .pd{opacity:.7;margin-bottom:12px}
+#popcard .vid{position:relative;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;margin-bottom:8px}
+#popcard .vid iframe,#popcard .vid video{position:absolute;inset:0;width:100%;height:100%;border:0}
+#popcard a{color:var(--accent);font-weight:700}
+#popcard .desc{line-height:1.5;margin:12px 0 0}
+#popcard .sm{font-size:.8rem;opacity:.7;margin:0 0 6px}
+#popcard .x{position:absolute;top:6px;right:10px;border:0;background:transparent;color:#2a2a2a;font-size:1.7rem;cursor:pointer;line-height:1}
+#live{position:absolute;top:calc(env(safe-area-inset-top,0px) + 78px);left:50%;transform:translateX(-50%);background:var(--card);padding:11px 22px;border-radius:99px;max-width:88vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:3;font-size:1.25rem}
+#back{font-size:1.15rem;padding:12px 22px}
+#live:empty{display:none}
+#terms{font-size:.75rem;opacity:.85;text-align:center;padding:2px 16px;max-width:92vw}
+</style>
+</head>
+<body>
+<div id="start">
+  <input id="kw" list="kwl" type="text" placeholder="Keyword(s)" autocomplete="off" autofocus>
+  <datalist id="kwl"></datalist>
+  <small id="hint">Tip: add more keywords, separated by commas, to widen the wheel. Press Enter to search.</small>
+  <div id="pbox" hidden style="margin-top:14px;text-align:center"><textarea id="pj" rows="4" style="width:min(80vw,520px);font-size:.8rem" placeholder="open the sheet link, select all, copy, paste here"></textarea><br><button class="pill" id="pgo">use this data</button></div>
+  <div class="tools"><span id="count"></span><span id="dev" hidden> · <a id="sync">sync sheet</a> · <a id="paste">paste JSON</a> · <a id="load">upload file</a> · <a id="reset">use samples</a></span>
+  <input id="file" type="file" accept=".json,application/json" hidden></div>
+</div>
+<div id="app">
+  <div class="top">
+    <button class="pill" id="back">← new keyword</button>
+    <div class="info"><div id="stats"></div><label><input type="checkbox" id="rel" checked> include related games</label></div>
+  </div>
+  <div id="live"></div>
+  <div id="wrap"><canvas id="cv"></canvas><button id="spin">SPIN</button></div>
+  <div id="result"></div>
+  <div id="terms"></div>
+  <div id="pop"><div id="popcard"></div></div>
+</div>
+<script>
+// ---------- sample data (replaced when you load your own JSON) ----------
+const SAMPLE=[
+{title:"Don’t Starve Together",genre:"Survival",description:"Survive freezing winters and wild creatures in a hand-drawn world."},
+{title:"Stardew Valley",genre:"Farming Sim",description:"Plant crops each season, harvest in autumn and fish in summer."},
+{title:"Hades",genre:"Roguelike",description:"Battle out of the underworld with fast action."},
+{title:"Subnautica: Below Zero",genre:"Survival",description:"Explore an arctic ocean of ice, snow and frozen caves."},
+{title:"Spiritfarer",genre:"Cozy",description:"A gentle boat-building game about caring for spirits."},
+{title:"Slay the Spire",genre:"Deckbuilder",description:"Climb a spire fighting monsters with cards."},
+{title:"Frostpunk",genre:"City Builder",description:"Keep your city alive through a global blizzard."},
+{title:"Animal Crossing: New Horizons",genre:"Life Sim",description:"Seasonal events, snowmen in winter and cherry blossoms in spring."},
+{title:"Hollow Knight",genre:"Metroidvania",description:"Explore a ruined insect kingdom."},
+{title:"Alba: A Wildlife Adventure",genre:"Adventure",description:"Spend a summer on a Mediterranean island saving wildlife."},
+{title:"Phasmophobia",genre:"Horror",description:"Hunt ghosts in haunted houses with friends."},
+{title:"The Long Dark",genre:"Survival",description:"Survive in a frozen Canadian wilderness after a disaster."},
+{title:"Cult of the Lamb",genre:"Roguelike",description:"Run a woodland cult and spread your word."},
+{title:"Wylde Flowers",genre:"Cozy",description:"Farm, brew potions and bloom as a witch in spring."}
+];
+// ---------- seasons ----------
+const M=new Date().getMonth();
+const season=M<2||M==11?"winter":M<5?"spring":M<8?"summer":"autumn";
+const PAL={winter:["#5b8fc9","#8fb8e3","#3e6ea8","#a9cdea","#6f9bd1","#d8ecf8"],
+spring:["#e87aa3","#8fcf9a","#f2b5cf","#5fbf7a","#f7d36b","#b99ae0"],
+summer:["#f5a623","#2cb5d6","#ffd23f","#ee6c4d","#3fc1a5","#f78fb3"],
+autumn:["#c8561e","#e09a2d","#8c3b14","#d97b3a","#a8692a","#b5382a"]};
+const FX={winter:["❄️","❅","❆"],spring:["🌸","🌷","🍃"],summer:["☀️","🌊","🌴"],autumn:["🍂","🍁","🎃"]};
+document.body.classList.add(season);
+// ---------- hand-made keyword lists (edit freely) ----------
+// format:  keyword:"extra names for it ; 10 related words ; exclusion words"
+// A game is a direct match if its title/genre/description contains the keyword or an extra name.
+// Otherwise it needs 2+ related words. Any exclusion word removes the game.
+const KW={
+"indie":";independent,solo developer,small team,handcrafted,passion project,quirky,experimental,artistic,unique,charming;",
+"adventure":";journey,quest,expedition,voyage,discover,unravel,odyssey,travel,narrative,explore;",
+"action":";fast-paced,combat,fight,battle,intense,reflex,brawl,adrenaline,dodge,thrilling;",
+"rpg":"role-playing,role playing;levels,skill tree,quests,party,stats,loot,character progression,classes,experience points,companions;",
+"exploration":"explore,exploring;discover,wander,uncharted,hidden secrets,map,journey,roam,expedition,secrets,wilderness;",
+"casual":";relaxed,easy to learn,laid-back,pick up and play,short sessions,simple,gentle,light-hearted,approachable,bite-sized;hardcore,punishing",
+"simulation":"simulator,sim;realistic,manage,daily life,run your own,routine,sandbox,life sim,virtual,systems,mechanics;",
+"story-driven":"story driven,story rich,narrative-driven;narrative,branching,dialogue,characters,plot,choices,tale,emotional,cinematic,written;",
+"puzzle":"puzzles;brain teaser,logic,riddle,solve,clever,mind-bending,escape room,deduce,match,conundrum;",
+"survival":"survive;scavenge,craft,hunger,wilderness,resources,stranded,gather,shelter,endure,stranded;",
+"strategy":"strategic;tactics,plan,resource management,command,outwit,army,4x,economy,conquer,outsmart;",
+"building":"builder;construct,base building,design,blueprint,architect,assemble,expand,layout,place buildings,creative;",
+"horror":"horrifying;scary,creepy,haunted,ghost,terrifying,dread,eerie,macabre,fear,frightening;",
+"roguelike":"roguelite,rogue-like,rogue-lite;procedurally generated,permadeath,randomized,each run,loot,unlocks,dungeon,replayable,die and retry,run-based;",
+"crafting":"craft,crafts;recipes,materials,gather,workbench,forge,blueprints,create items,upgrade,ingredients,resources;",
+"platformer":"platforming,platform game;jump,run and jump,double jump,precision,obstacles,levels,side-scrolling,leap,dash,collectibles;",
+"turn-based":"turn based;tactical combat,grid,take turns,positioning,action points,initiative,strategic,chess-like,planning,squad;",
+"co-op":"coop,cooperative,co op;play with friends,team up,together,partner,two players,drop-in,multiplayer,squad,join forces,party;",
+"management":"manager,tycoon;run,business,staff,budget,resources,optimize,empire,logistics,operate,hire;",
+"first-person":"first person,fps;first-person view,immersive,walking simulator,hands,aim,lantern,look around,perspective,environment,through your eyes;",
+"tactical":"tactics;squad,positioning,cover,planning,grid,strategic,turn-based,flank,mission,outmaneuver;",
+"metroidvania":";interconnected map,backtracking,unlock abilities,explore,labyrinth,secrets,upgrades,boss,side-scrolling,sequence break;",
+"hunting":"hunt,hunter;prey,track,stalk,wildlife,rifle,trophy,game animals,woods,bow,tracks;",
+"pixel art":"pixel,pixelated,8-bit,16-bit;retro,sprite,lo-fi,nostalgic,old-school,classic,throwback,chunky,console era,handcrafted;",
+"hand-drawn":"hand drawn,hand-painted,hand painted;illustrated,watercolor,painted,sketch,storybook,ink,artistic,animation,cartoon,paper;",
+"farming":"farm,farmer;crops,harvest,plant,seeds,livestock,soil,garden,barn,tractor,orchard;",
+"open world":"open-world;vast,roam freely,sandbox,explore freely,massive map,seamless,free roam,sprawling,traverse,wide open;",
+"cooking":"cook,chef,kitchen;recipes,ingredients,restaurant,meals,dishes,bake,food,diner,culinary,serve;",
+"card battler":"card battle,card game,card-based;cards,deck,tcg,duel,card combat,collectible cards,draw,hand of cards,spell cards,battle cards;",
+"multiple endings":"multiple ending,many endings,different endings,alternate endings;branching,choices matter,consequences,replayable,decisions,fate,outcomes,alternate,secret ending,paths;",
+"dungeon":"dungeons,dungeon crawler;crawl,labyrinth,loot,depths,catacombs,floors,traps,delve,underground,monsters;",
+"fishing":"fish,angler;rod,catch,lake,bait,reel,tackle,pond,casting,boat,fisherman;",
+"psychological horror":";mind,sanity,paranoia,dread,unsettling,disturbing,hallucinations,delusion,trauma,reality;comedy",
+"point-and-click":"point and click;click,inventory,dialogue,puzzles,hotspots,classic adventure,clues,interact,scenes,investigate;",
+"top-down":"top down,overhead,isometric;birds eye,overhead view,from above,twin-stick,aerial view,map view,angled,tile,camera above,zelda-like;",
+"shooter":"shoot em up,shmup;guns,bullets,aim,ammo,firearms,gunplay,weapons,crosshair,blast,arena shooter;",
+"multiplayer":"multi-player,online multiplayer;online,pvp,play with others,lobbies,versus,matchmaking,teams,players,competitive,party game;",
+"stealth":"sneak,sneaking,stealthy;hide,shadows,silent,assassin,infiltrate,undetected,guards,sneak past,takedown,evade;",
+"city builder":"city building,city-building,town builder,colony builder;zoning,citizens,roads,districts,settlement,infrastructure,urban,population,metropolis,town planning;",
+"deckbuilder":"deckbuilding,deck builder,deck-building,deck building;cards,deck,draft,synergies,build a deck,card combos,relics,energy,card pool,spells;",
+"hack and slash":"hack n slash,hack-and-slash,beat em up;slash,swords,combos,hordes,melee,blades,carnage,mow down,brawler,mayhem;",
+"sandbox":";freeform,creative mode,open-ended,experiment,limitless,build anything,tools,physics,playground,emergent;",
+"flying":"fly,flight,pilot,aircraft;wings,sky,aerial,soar,airplane,glide,helicopter,aviation,clouds,planes;",
+"sports":"sport;football,soccer,basketball,golf,tennis,baseball,league,athlete,match,tournament;",
+"climbing":"climb,climber,mountaineering;mountain,cliff,summit,ascend,peak,ropes,ledges,grip,altitude,scale;",
+"racing":"racer,race car,kart racing;cars,track,speed,laps,drift,motorsport,rally,circuit,driving,kart;football,soccer,basketball,baseball,hockey,golf,tennis",
+"rhythm":"rhythm game,rhythm-based;music,beats,tempo,timing,notes,dance,melody,soundtrack,groove,drumming;",
+"fighting":"fighter,fighting game;combos,martial arts,brawl,duel,1v1,arena,punches,tournament,moves,versus;",
+"heist":"robbery,burglar;steal,vault,crew,thieves,loot,plan,casino,getaway,bank,infiltrate;",
+"visual novel":"visual novels,kinetic novel;dialogue,choices,reading,sprites,branching story,romance route,narrative,text-based,characters,endings;",
+"choices":"choice,decisions;consequences,matter,branching,moral,decide,fate,dilemma,paths,outcomes,determine;",
+"mystery":"mysterious,whodunit,enigma;investigate,clues,secrets,uncover,unravel,detective,suspect,puzzle,disappearance,truth;",
+"dark":"darkness,dark fantasy,gothic,grim,grimdark;gloomy,shadowy,bleak,sinister,macabre,ominous,twisted,somber,eerie,brooding;dark mode",
+"cozy":"cosy;comfy,warm,gentle,relaxing,heartwarming,peaceful,snug,charming,tranquil,soothing;gore,brutal",
+"challenging":"difficult,punishing,unforgiving,soulslike,souls-like;brutal,skill,mastery,test your skills,learn from death,demanding,trial,relentless,hardcore,steep difficulty;",
+"magic":"magical,spell,sorcery,wizard,witch,witchcraft;enchanted,potions,mage,arcane,mystical,runes,wand,incantations,sorcerer,enchantment;",
+"village":"villagers,hamlet,small town;townsfolk,community,neighbours,rural,countryside,locals,cottage,market,inhabitants,settlement;",
+"friends":"friend,friendship;companions,bond,together,buddies,pals,team,relationships,party,loyalty,connection;",
+"mythology":"myth,mythical,mythological,legend;gods,norse,greek,folklore,deities,epic,pantheon,heroes,olympus,ancient tales;",
+"animals":"animal,wildlife,creatures,critters;pets,fauna,zoo,wild animals,farm animals,companion animals,beasts,birds,fur,care for;",
+"retro":"nostalgic,nostalgia,old-school,throwback,8-bit,16-bit,arcade;classic,vintage,pixel,90s,80s,old school,golden age,homage,cartridge,vhs;",
+"detective":"investigator,private eye,sleuth,noir,investigation;clues,case,suspects,crime,evidence,interrogate,mystery,whodunit,deduction,murder;",
+"ancient":"antiquity,ruins;temple,civilization,relics,forgotten,egyptian,roman,artifacts,lost city,primeval,archaeology;",
+"island":"islands,archipelago,isle;tropical,beach,castaway,sea,shore,coast,lagoon,paradise,boat,tide;",
+"relaxing":"relax,relaxation,calming,chill;peaceful,stress-free,tranquil,gentle,unwind,laid-back,easygoing,mellow,zen,serene;intense,brutal,punishing",
+"spooky":"spook,eerie,creepy;ghosts,haunted,halloween,graveyard,skeletons,witches,macabre,pumpkin,supernatural,haunting;",
+"fantasy":"high fantasy;magic,dragons,kingdom,elves,quest,wizards,sword,realm,mythical,medieval;",
+"space":"outer space,galaxy,cosmos,spaceship,astronaut;planet,stars,orbit,rocket,interstellar,station,universe,asteroid,cosmic,alien;personal space,storage space,living space,workspace,breathing space,inventory space,parking space",
+"monsters":"monster,creature,beast,fiend;demons,bestiary,hunt,slay,fight monsters,mutant,horde,lair,kaiju,creatures;",
+"cursed":"curse,hexed;hex,doomed,haunted,occult,ritual,damned,forbidden,evil,dark magic,malediction;",
+"music":"musical,musician,soundtrack;songs,melody,band,instruments,rhythm,concert,guitar,notes,composer,dj;",
+"robot":"robots,robotic,android,mech,droid;machine,cyborg,automaton,circuits,metal,artificial intelligence,drones,gears,sentient,ai;",
+"romance":"romantic,dating,love story;love,relationship,crush,partner,affection,courtship,heart,kiss,sweetheart,flirt;",
+"cute":"adorable,kawaii;sweet,lovable,cuddly,tiny,whimsical,fluffy,delightful,endearing,pastel,friendly;",
+"sci-fi":"sci fi,science fiction,scifi,futuristic,cyberpunk;future,technology,android,spaceship,dystopian,alien,neon,laser,cybernetic,megacorporation;",
+"funny":"humor,humour,comedy,hilarious,comedic,silly,wacky;jokes,laugh,absurd,quirky,goofy,parody,satire,witty,slapstick,zany;",
+"family":"families,family-friendly,siblings;kids,grandma,home,relatives,generations,mother,father,children,heritage,parents;",
+"murder":"murders,killer,homicide;victim,crime,suspect,investigation,body,detective,motive,serial killer,evidence,whodunit;",
+"underwater":"undersea,deep sea,ocean,submarine,diving;marine,coral,sea creatures,abyss,reef,depths,aquatic,diver,fish,seabed;",
+"nightmare":"nightmares,nightmarish;dreams,terror,sleep,surreal,haunting,disturbing,psychological,fear,twisted,dread;",
+"alien":"aliens,extraterrestrial,xenomorph,ufo;invasion,abduction,planet,space,galaxy,martian,visitors,first contact,flying saucer,species;",
+"medieval":"middle ages,knights,knight,castle;kingdom,swords,feudal,king,siege,peasant,crusade,armor,blacksmith,tavern;",
+"forest":"forests,woods,woodland,jungle;trees,wilderness,glade,canopy,wildlife,mushrooms,grove,undergrowth,nature,clearing;",
+"dogs":"dog,puppy,puppies,pup,canine;pet,bark,fetch,good boy,paws,woof,tail,leash,breeds,companion;hot dog",
+"post-apocalyptic":"post apocalyptic,postapocalyptic,apocalypse,apocalyptic,wasteland;ruins,fallout,survivors,collapse,end of the world,dystopian,scavenge,barren,mutants,devastated;",
+"nature":"natural,wilderness,outdoors,outdoor;plants,wildlife,trees,environment,ecosystem,mountains,rivers,flora,landscape,seasons;",
+"school":"high school,academy,campus,classroom,students,student;teacher,class,exams,university,homework,teen,club,dorm,lessons,graduation;",
+"anime":"manga,anime-style,anime style,japanese animation;visual novel,jrpg,chibi,cel-shaded,otaku,shonen,isekai,magical girl,cartoon,sensei;",
+"cats":"cat,kitten,kittens,kitty,feline;meow,purr,paws,whiskers,nine lives,tabby,cat lady,fur,nap,yarn;",
+"zombie":"zombies,undead,walkers;outbreak,horde,apocalypse,brains,survivors,plague,bite,shamble,living dead,infected;",
+"western":"wild west,cowboy,outlaw,frontier;saloon,gunslinger,sheriff,revolver,desert,bounty,ranch,old west,bandits,horse;",
+"winter":"wintry,wintertime;snow,snowy,frost,frozen,blizzard,icy,arctic,sled,freezing,snowman;",
+"spring":"springtime;blossom,cherry blossom,bloom,flowers,rain,rebirth,garden,meadow,renewal,fresh;spring loaded,spring up,spring into,spring to life,hot spring",
+"summer":"summery,summertime,summer holiday,summer vacation;beach,sunny,sunshine,vacation,tropical,swimming,heat,ice cream,holiday,sunset;",
+"autumn":"autumnal;leaves,falling leaves,harvest,pumpkin,golden leaves,crisp,cider,foliage,scarecrow,cozy;",
+"christmas":"xmas,santa,yuletide,christmassy;snow,reindeer,sleigh,presents,gifts,elf,mistletoe,gingerbread,carol,north pole;",
+"halloween":"trick or treat,all hallows;pumpkin,ghosts,witches,costumes,candy,haunted house,skeletons,spooky,bats,graveyard;",
+"new year":"new years,new years eve,nye,hogmanay;fireworks,countdown,midnight,resolution,champagne,fresh start,celebration,party,confetti,toast;",
+"easter":"easter bunny;bunny,rabbit,chocolate,spring,chick,basket,painted eggs,carrot,pastel,hatch;easter egg",
+"valentine's day":"valentine;love,romance,hearts,roses,date,chocolate,couple,sweetheart,cupid,flowers;",
+"thanksgiving":"turkey day;turkey,feast,pilgrims,harvest,gratitude,family dinner,pumpkin pie,cranberry,autumn,gathering;",
+"bonfire night":"guy fawkes,fireworks night,november 5th,5th of november;fireworks,bonfire,sparklers,effigy,remember remember,gunpowder,november,toffee apple,smoke,night sky;",
+"st patrick's day":"st patrick,st paddys day;irish,shamrock,clover,leprechaun,green,pot of gold,celtic,ireland,pub,luck;",
+"lunar new year":"chinese new year,spring festival;red envelope,dragon,lanterns,zodiac,dumplings,firecrackers,lion dance,festival,celebration,fireworks;",
+"diwali":"festival of lights,deepavali;lamps,lights,rangoli,sweets,fireworks,india,lantern,celebration,festival,candles;",
+"thriller":"suspense,suspenseful,tense;tension,conspiracy,chase,twist,danger,espionage,cat and mouse,race against time,edge of your seat,secrets;",
+"drama":"dramatic,emotional story;emotional,family,conflict,relationships,tragedy,heartfelt,personal,grief,moving,character-driven;",
+"crime":"criminal,gangster,mafia,mob;police,heist,underworld,detective,robbery,law,gang,investigation,cop,prison;",
+"historical":"history,historic,world war,victorian,renaissance;century,empire,era,real events,ancient,medieval,period,kingdom,revolution,19th century;",
+"war":"warfare,battlefield,wwii,soldiers;soldier,army,military,conflict,troops,frontline,weapons,invasion,tank,trench;",
+"supernatural":"paranormal,otherworldly;ghost,spirit,demon,occult,haunted,mystical,ritual,afterlife,psychic,possession;",
+"coming-of-age":"coming of age,growing up,teenage,teen;youth,adolescence,school,summer,friendship,first love,self-discovery,identity,teenager,childhood;",
+"dystopian":"dystopia,totalitarian,oppressive regime;regime,surveillance,control,rebellion,corrupt,authoritarian,bleak future,society,resistance,propaganda;",
+"fairy tale":"fairytale,fairy-tale,storybook;once upon a time,princess,enchanted,fable,kingdom,witch,folklore,whimsical,tale,magical;",
+"wholesome":"heartwarming,feel-good,feel good,uplifting;kind,gentle,friendly,sweet,positive,community,comforting,charming,caring,cozy;gore,brutal"
+};
+function clean(s){return String(s).toLowerCase().replace(/[’']/g,"").replace(/[-–]/g," ").replace(/\s+/g," ").trim()}
+const E={},IDX={};
+for(const [k,v] of Object.entries(KW)){
+  const [a,r,x]=v.split(";"),L=z=>z?z.split(",").map(clean).filter(Boolean):[];
+  E[k]={a:[clean(k),...L(a)],r:L(r),x:L(x)};
+  E[k].a.forEach(t=>{if(!(t in IDX))IDX[t]=k});
+}
+function resolve(raw){
+  const t=clean(raw);if(IDX[t])return {e:E[IDX[t]],k:IDX[t]};
+  const s=Object.keys(E).filter(k=>clean(k).startsWith(t.slice(0,3))||clean(k).includes(t));
+  if(s.length===1)return {e:E[s[0]],k:s[0],note:"“"+raw+"” → "+s[0]};
+  return {lit:t,note:"“"+raw+"” isn’t a curated keyword, exact word only"+(s.length?" (try: "+s.slice(0,4).join(", ")+")":"")};
+}
+function buildQuery(raw){
+  const items=raw.split(",").map(x=>x.trim()).filter(Boolean).map(resolve);
+  return {items,base:items.map(i=>i.k||i.lit)};
+}
+// ---------- data ----------
+let games=[];
+function norm(raw){
+  let arr=Array.isArray(raw)?raw:(raw&&(raw.games||raw.items||raw.events||Object.values(raw).find(Array.isArray)))||[];
+  return arr.map(g=>{
+    if(typeof g==="string") return {title:g,genre:"",description:""};
+    const lk={};for(const k in g)lk[k.toLowerCase()]=g[k];
+    const dec=s=>s.replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">");
+    const pick=(...ks)=>{for(const k of ks){const v=lk[k];if(v!=null&&v!=="")return dec(Array.isArray(v)?v.join(", "):String(v))}return ""};
+    return {title:pick("title","name","game","summary"),
+      genre:pick("genre","genres","genres[*].description","tags","category","categories"),
+      description:pick("description","short description","desc","summary_text","notes","about","details"),
+      date:pick("release date","date"),url:pick("steam url","url"),trailer:pick("trailer","video")};
+  }).filter(g=>g.title);
+}
+function setGames(a){games=a;document.getElementById("count").textContent=games.length+" games loaded"}
+try{const s=localStorage.getItem("gw_games");setGames(s?norm(JSON.parse(s)):norm(SAMPLE))}catch(e){setGames(norm(SAMPLE))}
+const $=id=>document.getElementById(id);
+$("load").onclick=()=>$("file").click();
+$("file").onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  f.text().then(t=>{const raw=JSON.parse(t);const g=norm(raw);
+    if(!g.length){alert("Couldn’t find any games in that file.");return}
+    setGames(g);try{localStorage.setItem("gw_games",JSON.stringify(g))}catch(_){}
+  }).catch(()=>alert("That file isn’t valid JSON."));
+};
+$("reset").onclick=()=>{try{localStorage.removeItem("gw_games")}catch(_){}setGames(norm(SAMPLE))};
+const SHEET="https://opensheet.elk.sh/1ritGjWTo1Vr0kO3veyx0rXAMoC4PCN4d6SqHuySyoZM/10";
+function ingest(t){try{const g=norm(JSON.parse(t));if(!g.length){alert("No games found in that data.");return}setGames(g);try{localStorage.setItem("gw_games",JSON.stringify(g))}catch(_){}$("pbox").hidden=true;return true}catch(e){alert("That doesn’t look like valid JSON.")}}
+$("sync").onclick=()=>{$("count").textContent="syncing…";fetch(SHEET).then(r=>r.text()).then(t=>{if(!ingest(t))setGames(games)}).catch(()=>{setGames(games);$("pbox").hidden=false;alert("This page can’t reach the sheet directly. Open the sheet link, copy everything, and paste it into the box.")})};
+$("paste").onclick=()=>{$("pbox").hidden=!$("pbox").hidden};
+$("pgo").onclick=()=>ingest($("pj").value);
+$("kwl").innerHTML=Object.keys(KW).map(k=>`<option value="${k}">`).join("");
+// Dev tools (change the data source) only appear at yoursite/?dev
+if(new URLSearchParams(location.search).has("dev"))$("dev").hidden=false;
+// Auto-sync from the sheet when hosted on a normal website
+if(location.protocol.startsWith("http")){fetch(SHEET).then(r=>r.json()).then(raw=>{const g=norm(raw);if(g.length){setGames(g);try{localStorage.setItem("gw_games",JSON.stringify(g))}catch(_){}}}).catch(()=>{})}
+// ---------- matching ----------
+const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+const reCache=new Map();
+function hit(text,t){
+  let r=reCache.get(t);
+  if(!r){r=t.length<=5?new RegExp("\\b"+esc(t)+"(?:s|es)?\\b","i"):new RegExp("\\b"+esc(t.replace(/s$/,"")),"i");reCache.set(t,r)}
+  return r.test(text);
+}
+let direct=[],related=[],current="",pool=[],Q=null;
+function search(){
+  direct=[];related=[];
+  for(const g of games){
+    const hay=clean(g.title+" "+g.genre+" "+g.description);
+    g._why="";let d=false,sc=0;const why=[];
+    for(const q of Q.items){
+      if(!q.e){if(hit(hay,q.lit))d=true;continue}
+      if(q.e.x.some(t=>hit(hay,t)))continue;
+      if(q.e.a.some(t=>hit(hay,t))){d=true;continue}
+      const w=q.e.r.filter(t=>hit(hay,t));
+      if(w.length>=2){sc+=w.length;why.push(...w.slice(0,3))}
+    }
+    if(d)direct.push(g);
+    else if(sc){g._why=why.slice(0,4).join(", ");related.push({g,sc})}
+  }
+  related.sort((a,b)=>b.sc-a.sc);
+  related=related.map(x=>x.g);
+}
+function buildPool(){
+  pool=direct.concat($("rel").checked?related:[]);
+  $("stats").textContent=`“${current}” · ${direct.length} direct`+($("rel").checked?` + ${related.length} related`:"");
+}
+// ---------- wheel ----------
+const cv=$("cv"),ctx=cv.getContext("2d");
+let rot=0,spinning=false,raf=0,winner=-1;
+function size(){const d=devicePixelRatio||1,w=cv.clientWidth;cv.width=cv.height=w*d;ctx.setTransform(d,0,0,d,0,0)}
+function draw(){
+  const w=cv.clientWidth,c=w/2,r=c-10,n=pool.length;
+  ctx.clearRect(0,0,w,w);
+  if(!n){$("live").textContent="";ctx.fillStyle="rgba(0,0,0,.4)";ctx.font="20px Georgia";ctx.textAlign="center";ctx.fillText("No games found",c,c-80);return}
+  const step=2*Math.PI/n,pal=PAL[season];
+  const fs=Math.min(18,r*step*0.62),labels=fs>=8;
+  for(let i=0;i<n;i++){
+    const a=rot+i*step;
+    ctx.beginPath();ctx.moveTo(c,c);ctx.arc(c,c,r,a,a+step);ctx.closePath();
+    ctx.fillStyle=pal[i%pal.length];ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.8)";ctx.lineWidth=n>60?0.6:2;ctx.stroke();
+    if(!labels)continue;
+    ctx.save();ctx.translate(c,c);ctx.rotate(a+step/2);
+    const dk=lum(pal[i%pal.length])>0.3;
+    ctx.fillStyle=dk?"#1b1b1b":"#fff";ctx.shadowColor=dk?"transparent":"rgba(0,0,0,.45)";ctx.shadowBlur=dk?0:3;
+    ctx.font=`700 ${fs}px Georgia`;
+    ctx.textAlign="right";ctx.textBaseline="middle";
+    let t=pool[i].title;if(t.length>22)t=t.slice(0,21)+"…";
+    ctx.fillText(t,r-14,0);ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(c,c,r,0,7);ctx.lineWidth=8;ctx.strokeStyle="#fff";ctx.stroke();
+  const ix=Math.floor((((-Math.PI/2-rot)%(2*Math.PI))+2*Math.PI)%(2*Math.PI)/step)%n;
+  $("live").textContent=labels?"":pool[ix].title;
+  // pointer
+  ctx.beginPath();ctx.moveTo(c-14,2);ctx.lineTo(c+14,2);ctx.lineTo(c,32);ctx.closePath();
+  ctx.fillStyle="#d22";ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();ctx.fill();
+}
+function lum(h){const n=parseInt(h.slice(1),16),f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(n>>16&255)+.7152*f(n>>8&255)+.0722*f(n&255)}
+let last=0;
+function idle(t){
+  if(spinning)return;
+  rot+=(t-last)*0.0002;last=t;draw();raf=requestAnimationFrame(idle);
+}
+function startIdle(){cancelAnimationFrame(raf);last=performance.now();raf=requestAnimationFrame(idle)}
+function spin(){
+  if(spinning||!pool.length)return;
+  spinning=true;cancelAnimationFrame(raf);$("spin").disabled=true;$("result").innerHTML="";
+  const start=rot,total=(6+Math.random()*3)*2*Math.PI+Math.random()*2*Math.PI,dur=5200,t0=performance.now();
+  (function f(t){
+    const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,4);
+    rot=start+total*e;draw();
+    if(p<1)return requestAnimationFrame(f);
+    spinning=false;$("spin").disabled=false;finish();startIdle();
+  })(t0);
+}
+function finish(){
+  const n=pool.length,step=2*Math.PI/n;
+  let ang=((-Math.PI/2-rot)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+  winner=Math.floor(ang/step)%n;
+  const g=pool[winner],isDirect=direct.includes(g);
+  $("result").innerHTML=`<h2></h2><p></p><button class="pill" id="rm">remove & spin again</button>`;
+  $("result").querySelector("h2").textContent="🎉 "+g.title;
+  const p=$("result").querySelector("p");
+  p.textContent=(g.genre?g.genre+" · ":"")+(g.date?(/\d/.test(g.date)?"releases "+g.date:g.date)+" · ":"")+(isDirect?"keyword match":"related ("+(g._why||"")+")");
+  if(/^https?:\/\//.test(g.url||"")){const a=document.createElement("a");a.href=g.url;a.target="_blank";a.rel="noopener";a.textContent=" · Steam page";a.style.color="var(--accent)";p.appendChild(a)}
+  $("rm").onclick=()=>{pool.splice(winner,1);$("result").innerHTML="";draw()};
+  setTimeout(()=>showPop(g),400);
+}
+function ytId(u){const m=(u||"").match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/);return m&&m[1]}
+function fmtDate(s){
+  const m=(s||"").match(/(\d{1,2})\s+([A-Za-z]{3})/);if(!m)return s||"";
+  const full=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const i=full.findIndex(x=>x.slice(0,3).toLowerCase()===m[2].toLowerCase());
+  return i<0?s:(+m[1])+" "+full[i]+" "+new Date().getFullYear();
+}
+function hidePop(){$("pop").classList.remove("show");$("popcard").textContent=""}
+function showPop(g){
+  const c=$("popcard");c.textContent="";
+  const add=(tag,txt,cls)=>{const e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;c.appendChild(e);return e};
+  add("button","×","x").onclick=hidePop;
+  add("h2",g.title+(g.genre?" ("+g.genre+")":""));
+  add("div",fmtDate(g.date)||"Release date unknown","pd");
+  const id=ytId(g.trailer);
+  if(id||/\.mp4/.test(g.trailer||"")){
+    const v=add("div",null,"vid");
+    if(id){const f=document.createElement("iframe");f.referrerPolicy="strict-origin-when-cross-origin";f.src="https://www.youtube.com/embed/"+id+"?rel=0&playsinline=1"+(location.origin.startsWith("http")?"&origin="+encodeURIComponent(location.origin):"");f.allowFullscreen=true;f.setAttribute("allow","fullscreen; picture-in-picture");f.title="Trailer";v.appendChild(f)}
+    else{const m=document.createElement("video");m.src=g.trailer;m.controls=true;m.playsInline=true;v.appendChild(m)}
+    if(id){const s=add("p","Video not loading? ","sm");const a=document.createElement("a");a.href=g.trailer;a.target="_blank";a.rel="noopener";a.textContent="Watch on YouTube";s.appendChild(a)}
+  }else add("p","No trailer listed for this game.","sm");
+  if(/^https?:\/\//.test(g.url||"")){const p=add("p",null);const a=document.createElement("a");a.href=g.url;a.target="_blank";a.rel="noopener";a.textContent="Store page →";p.appendChild(a)}
+  add("p",g.description||"No description available.","desc");
+  $("pop").classList.add("show");
+}
+$("pop").onclick=e=>{if(e.target.id==="pop")hidePop()};
+$("spin").onclick=spin;
+$("rel").onchange=()=>{buildPool();$("result").innerHTML="";draw()};
+// ---------- flow ----------
+function confetti(){
+  document.querySelectorAll(".fx").forEach(e=>e.remove());
+  for(let i=0;i<16;i++){
+    const s=document.createElement("span");s.className="fx";
+    s.textContent=FX[season][i%3];
+    s.style.left=Math.random()*100+"vw";s.style.fontSize=(14+Math.random()*18)+"px";
+    s.style.animationDuration=(9+Math.random()*10)+"s";s.style.animationDelay=(-Math.random()*15)+"s";
+    document.body.appendChild(s);
+  }
+}
+function go(k){
+  Q=buildQuery(k);
+  current=k;search();buildPool();
+  $("start").style.display="none";$("app").style.display="flex";
+  document.body.classList.add("themed");confetti();
+  size();$("result").innerHTML=pool.length?"":"<p>Nothing matched. Try another keyword.</p>";
+  const notes=Q.items.filter(i=>i.note).map(i=>i.note);
+  $("terms").textContent="Matching: "+Q.base.slice(0,8).join(", ")+(notes.length?" · "+notes.join(" · "):"");
+  draw();startIdle();
+}
+$("kw").addEventListener("keydown",e=>{if(e.key==="Enter"&&$("kw").value.trim())go($("kw").value)});
+$("back").onclick=()=>{
+  cancelAnimationFrame(raf);spinning=false;$("spin").disabled=false;
+  $("app").style.display="none";$("start").style.display="flex";
+  document.body.classList.remove("themed");
+  document.querySelectorAll(".fx").forEach(e=>e.remove());
+  $("kw").value="";$("kw").focus();
+};
+addEventListener("resize",()=>{if($("app").style.display==="flex"){size();draw()}});
+</script>
+</body>
+</html>
