@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Game Wheel (curated)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@600;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#fff;--fg:#1d1d1f;--muted:#777;--accent:#3b6fd4;--card:rgba(255,255,255,.85);--bg2:#fff;--bg3:#fff;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -21,6 +24,26 @@ body.themed.autumn{--card:rgba(255,255,255,.78);--bg2:#fbe3b8;--bg3:#d9823b;--fg
 #start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:5}
 #start input{font:inherit;font-size:clamp(1.6rem,6vw,2.6rem);text-align:center;border:0;border-bottom:2px solid var(--muted);background:transparent;color:var(--fg);outline:none;width:min(80vw,520px);padding:.4em}
 #start input:focus{border-color:var(--accent)}
+/* Spotlight pills: a wrapping row of buttons under the hint */
+/* Spotlight pills. The font stack falls back to similar geometric fonts if League Spartan can't load. */
+#spotsHead,#spots button{font-family:"League Spartan","Montserrat","Futura","Century Gothic",system-ui,sans-serif;text-transform:uppercase}
+#spotsHead{margin:20px 0 0;font-size:.85rem;font-weight:800;letter-spacing:.14em;color:var(--fg);text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:2px}
+#spots{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:12px;max-width:min(94vw,680px)}
+#spots button{font-size:1rem;font-weight:800;letter-spacing:.06em;line-height:1;border:1px solid rgba(255,255,255,.14);
+  background:#1d1b22;border-radius:99px;padding:11px 18px 9px;cursor:pointer;   /* solid charcoal pill */
+  box-shadow:0 2px 6px rgba(0,0,0,.18);transition:transform .15s,box-shadow .15s}
+#spots button:hover,#spots button:focus-visible{transform:translateY(-2px);box-shadow:0 5px 12px rgba(0,0,0,.28);outline:none}
+#spots button:focus-visible{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--fg)}   /* visible ring for keyboard users */
+#spots button:disabled{filter:grayscale(1);opacity:.5;cursor:default;transform:none}
+/* Gradient lettering: the gradient is painted as the span's background, then "clipped" to the
+   shape of the letters, and the text colour is made transparent so the gradient shows through. */
+#spots button span{background-clip:text;-webkit-background-clip:text;color:transparent}
+/* Spotlight pill colours: brightened versions of each community's colours so they read on the dark pill */
+.spot-black span{background-image:linear-gradient(90deg,#ff4d5e,#ffc93c,#2ecc71)}                 /* Pan-African red, gold, green */
+.spot-latam span{background-image:linear-gradient(90deg,#ffb347,#ff6a3d,#ff4f9a)}                 /* warm sunset tones */
+.spot-lgbtq span{background-image:linear-gradient(90deg,#ff4d4d,#ffa133,#ffe433,#3ddc6b,#4d8bff,#b56cff)} /* rainbow flag */
+.spot-sea span{background-image:linear-gradient(90deg,#3ee0d0,#4fb3ff)}                          /* tropical sea teal to blue */
+.spot-women span{background-image:linear-gradient(90deg,#c58cff,#f0a8ff)}                         /* International Women's Day purple */
 #start small{margin-top:1.2em;color:var(--muted);font-size:.95rem;text-align:center;max-width:min(80vw,520px);line-height:1.4}
 #count{font-size:1.1rem}
 #start .tools{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);font-size:.8rem;color:var(--muted)}
@@ -59,6 +82,16 @@ canvas{width:100%;height:100%;display:block}
 #back{font-size:1.15rem;padding:12px 22px}
 #live:empty{display:none}
 #terms{font-size:.75rem;opacity:.85;text-align:center;padding:2px 16px;max-width:92vw}
+/* Dev-only keyword report: a full-screen scrollable panel above everything else */
+#rep{position:fixed;inset:0;z-index:30;background:var(--bg);color:var(--fg);overflow:auto;padding:16px;box-sizing:border-box;font-size:.9rem}
+#rep[hidden]{display:none}
+#rep table{border-collapse:collapse;width:100%;max-width:760px;margin:10px auto}
+#rep th,#rep td{text-align:left;padding:5px 8px;border-bottom:1px solid rgba(128,128,128,.25)}
+#rep th{cursor:pointer;position:sticky;top:0;background:var(--bg)}
+#rep td.n{text-align:right;font-variant-numeric:tabular-nums}
+#rep .thin{color:#c0392b;font-weight:700}
+#rep .big{color:#b7791f;font-weight:700}
+#rep .head{max-width:760px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -66,8 +99,10 @@ canvas{width:100%;height:100%;display:block}
   <input id="kw" list="kwl" type="text" placeholder="Keyword(s)" autocomplete="off" autofocus>
   <datalist id="kwl"></datalist>
   <small id="hint">Tip: add more keywords, separated by commas, to widen the wheel. Press Enter to search.</small>
+  <h2 id="spotsHead">SUGGESTIONS</h2>
+  <div id="spots" aria-label="Suggested spotlight wheels"></div>
   <div id="pbox" hidden style="margin-top:14px;text-align:center"><textarea id="pj" rows="4" style="width:min(80vw,520px);font-size:.8rem" placeholder="open the sheet link, select all, copy, paste here"></textarea><br><button class="pill" id="pgo">use this data</button></div>
-  <div class="tools"><span id="count"></span><span id="dev" hidden> · <a id="sync">sync sheet</a> · <a id="paste">paste JSON</a> · <a id="load">upload file</a> · <a id="reset">use samples</a></span>
+  <div class="tools"><span id="count"></span><span id="dev" hidden> · <a id="sync">sync sheet</a> · <a id="paste">paste JSON</a> · <a id="load">upload file</a> · <a id="reset">use samples</a> · <a id="report">keyword report</a></span>
   <input id="file" type="file" accept=".json,application/json" hidden></div>
 </div>
 <div id="app">
@@ -81,6 +116,7 @@ canvas{width:100%;height:100%;display:block}
   <div id="terms"></div>
   <div id="pop"><div id="popcard"></div></div>
 </div>
+<div id="rep" hidden></div>
 <script>
 // ---------- sample data (replaced when you load your own JSON) ----------
 const SAMPLE=[
@@ -190,7 +226,7 @@ const KW={
 "cute":"adorable,kawaii;sweet,lovable,cuddly,tiny,whimsical,fluffy,delightful,endearing,pastel,friendly;",
 "sci-fi":"sci fi,science fiction,scifi,futuristic,cyberpunk;future,technology,android,spaceship,dystopian,alien,neon,laser,cybernetic,megacorporation;",
 "funny":"humor,humour,comedy,hilarious,comedic,silly,wacky;jokes,laugh,absurd,quirky,goofy,parody,satire,witty,slapstick,zany;",
-"family":"families,family-friendly,siblings;kids,grandma,home,relatives,generations,mother,father,children,heritage,parents;",
+"family":"families,siblings;kids,grandma,home,relatives,generations,mother,father,children,heritage,parents;",
 "murder":"murders,killer,homicide;victim,crime,suspect,investigation,body,detective,motive,serial killer,evidence,whodunit;",
 "underwater":"undersea,deep sea,ocean,submarine,diving;marine,coral,sea creatures,abyss,reef,depths,aquatic,diver,fish,seabed;",
 "nightmare":"nightmares,nightmarish;dreams,terror,sleep,surreal,haunting,disturbing,psychological,fear,twisted,dread;",
@@ -200,22 +236,28 @@ const KW={
 "dogs":"dog,puppy,puppies,pup,canine;pet,bark,fetch,good boy,paws,woof,tail,leash,breeds,companion;hot dog",
 "post-apocalyptic":"post apocalyptic,postapocalyptic,apocalypse,apocalyptic,wasteland;ruins,fallout,survivors,collapse,end of the world,dystopian,scavenge,barren,mutants,devastated;",
 "nature":"natural,wilderness,outdoors,outdoor;plants,wildlife,trees,environment,ecosystem,mountains,rivers,flora,landscape,seasons;",
-"school":"high school,academy,campus,classroom,students,student;teacher,class,exams,university,homework,teen,club,dorm,lessons,graduation;",
+"school":"high school,academy,campus,classroom,students,student;teacher,class,exams,university,homework,teen,club,dorm,lessons,graduation;old school",
 "anime":"manga,anime-style,anime style,japanese animation;visual novel,jrpg,chibi,cel-shaded,otaku,shonen,isekai,magical girl,cartoon,sensei;",
 "cats":"cat,kitten,kittens,kitty,feline;meow,purr,paws,whiskers,nine lives,tabby,cat lady,fur,nap,yarn;",
 "zombie":"zombies,undead,walkers;outbreak,horde,apocalypse,brains,survivors,plague,bite,shamble,living dead,infected;",
 "western":"wild west,cowboy,outlaw,frontier;saloon,gunslinger,sheriff,revolver,desert,bounty,ranch,old west,bandits,horse;",
 "winter":"wintry,wintertime,snowman;snow,snowy,frozen,frost,icy,ice,arctic,blizzard,glacier,polar,penguin,tundra,sled,freezing,avalanche;cold,mountain,cabin,expedition,wind,storm,fireplace,warm,isolated,fur;ice cream",
 "spring":"springtime;blossom,cherry blossom,bloom,blooming,rebirth,renewal,meadow,petals,seedling;flowers,flower,garden,rain,fresh,farm,farming,sunshine,birds,butterflies,nature,growth,planting,cozy,village;spring loaded,spring up,spring into,spring to life,hot spring",
-"summer":"summery,summertime,summer holiday,summer vacation;beach,sunny,sunshine,tropical,vacation,swimming,surf,ice cream,seaside,holiday;island,ocean,sun,sea,boat,camp,festival,heat,sunset,sail,fishing,cozy;",
+"summer":"summery,summertime,summer holiday,summer holidays,summer vacation,summer break,summer camp;beach,sunny,sunshine,tropical,vacation,swimming,surf,ice cream,seaside,holiday;island,ocean,sun,sea,boat,camp,festival,heat,sunset,sail,fishing,cozy;",
 "autumn":"autumnal,pumpkin,scarecrow,cider;orchard,woodland,foliage,pumpkins;leaves,harvest,forest,mushroom,cozy,farm,village,campfire,wind,rain,storm,fog,witch,cabin;;3",
-"christmas":"xmas,santa,yuletide,christmassy,festive,reindeer,sleigh,mistletoe,gingerbread,snowman,north pole,carol;snow,snowy,winter,frozen,frost,icy,glacier,arctic,blizzard,penguin;gift,gifts,toy,toys,heartwarming,warm,tradition,festival,lantern,kindness,joy,wish,cookies,tea,cozy;",
+"christmas":"xmas,santa,yuletide,christmassy,festive,reindeer,sleigh,mistletoe,gingerbread,north pole,nutcracker,carols;snow,snowy,winter,wintry,frost,frosty,blizzard,snowman,snowmen,winter festival,holiday season,wrapping gifts,gift giving,fireplace,hot cocoa,hot chocolate,ornaments,wreath,stockings;frozen,icy,penguin,gift,gifts,presents,toy,toys,tradition,festival,lantern,cookies,cocoa,cabin,candles;@dark;2;@warm",
 "halloween":"trick or treat,jack o lantern,all hallows;witch,ghost,haunted,spooky,skeleton,vampire,graveyard,werewolf,ghoul,macabre,costume,candy;curse,cursed,monster,nightmare,creepy,eerie,supernatural,spirit;;3",
 "new year":"new years,new years eve,nye,hogmanay;fireworks,countdown,resolution,confetti,champagne,midnight;party,celebrate,celebration,stars,wish,fresh,start over,joy,together,festival;",
-"easter":"easter bunny;bunny,rabbit,chick,pastel,egg hunt,painted eggs,carrot;spring,flowers,garden,chocolate,cute,hatch,basket,egg,sweet,family;easter egg",
-"valentine's day":"valentine;romance,roses,cupid,sweetheart,dating,couple,courtship,flirt,crush;love,heart,chocolate,flowers,kiss,relationship,partner,wholesome,cozy,friendship;",
+"easter":"easter bunny;bunny,rabbit,chick,pastel,egg hunt,painted eggs,carrot;spring,flowers,garden,chocolate,cute,hatch,basket,egg,sweet,family;easter egg,@dark",
+"mother's day":"mothers day,mothering sunday,mums day,moms day,your mother,your mom,your mum,her mother,his mother,her mom,his mom,her mum,his mum,my mother,my mom,my mum,their mother,mother and daughter,mother and son,mother daughter,mother son,motherhood;grandma,grandmother,granny,nana,mama,mommy,single mother,single mom;mother,mom,mum,family,daughter,son,parent,parents,children,kids,baby,home,childhood,memories,caring,love;@dark,from her mother,from his mother;2;mother,mom,mum,mama,grandma,grandmother,granny,nana,parent,parents,family",
+"earth day":"climate change,ecosystem,ecosystems,rewilding,rewild,conservation,regreening,solarpunk,soilpunk,sustainable,sustainability,pollution,deforestation,endangered species;restore nature,reconnect with nature,nature sanctuary,habitats,habitat,restore species,lost species,biodiversity,recycling,eco friendly,environmentalist,polluted,greenery;nature,wildlife,plants,trees,forest,garden,green,species,flora,fauna,bloom,heal the land,bring life back,healing;alien planet,chop down,lumber,@dark;2;nature,wildlife,ecosystem,habitat,species,plants,trees,forest,garden,flora,fauna,coral,reef",
+"remembrance":"remembrance day,remembrance sunday,armistice,poppy,poppies,world war,world war i,world war ii,wwi,wwii,ww1,ww2,war veteran,the blitz,d day;trenches,trench,wartime,home front,evacuee,1914,1918,1939,1940s,1944;war,soldier,soldiers,army,history,historical,survive,letters,memories,europe,occupation,resistance;fantasy,gods,demons,supernatural,alien,galaxy,post war,@dark;2;war,wartime,soldier,soldiers,veteran,army,world war",
+"family friendly":"kid friendly,kids friendly,all ages,for all ages,for kids,for children,the whole family,young players,couch co op,local co op,split screen;cute,adorable,colorful,colourful,cheerful,playful,wholesome,cozy,charming,gentle;animals,puzzle,puzzles,platformer,friends,silly,funny,bright,simple,relaxing,casual,co op;@dark,not suitable for children,mature,violence,violent,kill,killing,blood,guns,gun,weapons,death,dead,swearing;4;",
+"date night":"couples,as a couple,with a partner,with your partner,with your significant other,two player co op,2 player co op,couch co op,local co op,split screen,play together;co op,coop,cooperative,two players,2 players,duo,romance,romantic;cozy,wholesome,puzzle,puzzles,cooking,love,relaxing,cute,together,friends,with a friend;massively multiplayer,pvp,competitive,33 players,@dark;3;co op,coop,cooperative,two players,2 players,duo,partner,romance,romantic,couples",
+"father's day":"fathers day,dads day,your father,your dad,her father,his father,her dad,his dad,my father,my dad,their father,father and daughter,father and son,father daughter,father son,fatherhood;grandpa,grandfather,papa,daddy,single father,single dad;father,dad,family,daughter,son,parent,parents,children,kids,baby,home,childhood,memories,fishing,camping;@dark,from her father,from his father;2;father,dad,papa,grandpa,grandfather,parent,parents,family",
+"valentine's day":"valentine;romance,roses,cupid,sweetheart,dating,couples,courtship,flirt,crush;love,heart,chocolate,flowers,kiss,relationship,partner;partner in crime,crushed;2;romance,romantic,love,dating,crush,sweetheart,flirt,kiss,relationship,courtship",
 "thanksgiving":"turkey day;turkey,feast,pilgrims,gratitude,thankful,cranberry,pumpkin pie;harvest,family,dinner,community,farm,gathering,warm,cozy;;3",
-"bonfire night":"guy fawkes,fireworks night;fireworks,sparklers,effigy,gunpowder,remember remember;bonfire,campfire,fire,night,smoke,gather,autumn,cold,november,celebration;",
+"bonfire night":"guy fawkes,fireworks night;fireworks,sparklers,effigy,remember remember;bonfire,campfire,fire,smoke,autumn,november,celebration,sparkler;",
 "st patrick's day":"st patrick,st paddys day,leprechaun,shamrock;clover,celtic,irish,ireland,pot of gold;pub,luck,green,folklore,fairy,drink,gold,rainbow,mythology,pint;",
 "lunar new year":"chinese new year,spring festival,year of the;red envelope,lantern,lanterns,zodiac,dumplings,firecrackers,lion dance,dragon dance;dragon,festival,celebration,fireworks,family,tradition,lucky,red,gold,spirit;",
 "diwali":"festival of lights,deepavali,diya;diyas,rangoli,lamps;lights,lantern,candle,candles,sweets,festival,celebration,india,fireworks,joy;",
@@ -231,21 +273,237 @@ const KW={
 "wholesome":"heartwarming,feel-good,feel good,uplifting;kind,gentle,friendly,sweet,positive,community,comforting,charming,caring,cozy;gore,brutal"
 };
 function clean(s){return String(s).toLowerCase().replace(/[’']/g,"").replace(/[-–]/g," ").replace(/\s+/g," ").trim()}
+// Shared word groups. Writing @dark in a keyword line stands for this whole list,
+// so family occasions (christmas, easter, mother's day…) can rule out horror-toned games
+// without repeating 20 words on every line.
+const GROUPS={
+  dark:"horror,psychological horror,gore,gory,terror,terrifying,occult,demon,demonic,murder,murderer,killer,serial killer,zombie,undead,bloody,bloodthirsty,brutal,nightmare,sinister,macabre,creepy,cult,scammer,dead father,dead mother,regime,lovecraftian,eldritch,corpse,corpses",
+  warm:"cozy,cosy,warm,warmth,heartwarming,wholesome,gentle,charming,family,friends,friendship,festive,kindness,kind,cute,relaxing,peaceful,cheerful,joy,joyful,sweet,home,village,snug,comforting,uplifting,calm,serene,tranquil,stillness"
+};
+// ---------- spotlights: studios and games featured by diversity initiatives ----------
+// Only add a studio or game here when a public showcase, fund or award lists it, and add that source
+// to SOURCES so the popup can link to it. Never guess from a name or an art style.
+// Each entry: [group, "studio" or "game", exact name as it appears in the sheet, source key, optional "about"].
+// The 5th field says WHY it's in the group. Leave it out for "made by" (the studio is Black-led, women-led…).
+// Write "about" when the source names the game for its leads or story (a Black lead, an LGBTQ+ story),
+// not for who made it. "about" is only allowed in the groups listed in ABOUT_GROUPS below.
+// "studio" entries also cover that studio's future games. Use "game" when the credited developer is a
+// publisher (it would tag every game they publish) or when several studios share the credit.
+const SOURCES={
+  wlg26:["Women-Led Games Showcase, Summer Game Fest 2026", "https://www.digitallydownloaded.net/2026/06/highlights-women-led-games-showcase-june-4-2026.html"],
+  afro26:["Afro Game Showcase 2026 (African and diaspora developers)","https://gamesindustryafrica.com/2026/06/25/afro-game-showcase-debuts-with-22-titles-spotlighting-african-and-diaspora-talent/"],
+  bvigfresh25:["Black Voices in Gaming 2025 Freshman Class","https://www.capsulecomputers.com.au/?p=341208"],
+  xboxbhm26:["Xbox Developer Acceleration Program, Black History Month 2026","https://news.xbox.com/en-us/2026/02/23/xbox-developer-acceleration-program-black-history-month-games/"],
+  lagstga25:["Latin American Games Showcase, The Game Awards 2025","https://en.generacionxbox.com/?p=455541"],
+  seaawards26:["SEA Game Awards 2026, showcase reveals","https://80.lv/articles/sea-game-awards-2026-spotlights-southeast-asia-s-game-development-talent"],
+  sea2026list:["Twentytwo13: Southeast Asian indie games to look out for in 2026","https://twentytwo13.my/overhours-lost-found-co-among-southeast-asian-indie-video-games-to-look-out-for-in-2026/"],
+  wdsale26:["WINGS Women's Day Sale 2026 highlights","https://www.screenhub.com.au/news/games/wings-womens-day-sale-steam-2026-2694319/"],
+  pride26:["PRIDE: lesbian and sapphic video games coming in 2026","https://www.pride.com/culture/lesbian-video-games-2026"],
+  gaymingcozy26:["Gayming Magazine: 2026 indie games with queer representation","https://gaymingmag.com/2026/04/confettis-cozy-corner-life-sims-farming-sims-and-horror-oh-my/"],
+  gayming2026:["Gayming Magazine: 2026 indie releases (queer representation)","https://gaymingmag.com/?p=55842"],
+  wlg25:["Women-Led Games Showcase, Summer Game Fest 2025", "https://gamersocialclub.ca/2025/06/07/women-led-games-2025-showcase-everything-announced"],
+  bvig26:["Black Voices in Gaming, Summer Game Fest 2026", "https://player.gg/events/black-voices-in-gaming-summer-game-fest-showcase-2026"],
+  bvigfeb26:["Black Voices in Gaming, Black History Month Showcase 2026", "https://www.gamespress.com/Black-Voices-in-Gaming-Showcase-Reveals-New-Games-Trailers-and-Develop"],
+  bvig25:["Black Voices in Gaming, Summer Game Fest 2025", "https://game8.co/articles/latest/black-voices-in-gaming-showcase-everything-announced"],
+  seags26:["Southeast Asian Games Showcase 2026", "https://www.videogameschronicle.com/news/southeast-asian-games-showcase-heres-all-36-games-shown-in-todays-presentation/"],
+  seags25:["Southeast Asian Games Showcase 2025", "https://game8.co/articles/latest/southeast-asian-games-2025-everything-announced"],
+  lags26:["Latin American Games Showcase, Summer Game Fest 2026", "https://culturageek.com.ar/nuevos-videojuegos-latin-american-games-showcase/"],
+  gay26:["Gayming Awards 2026, Best LGBTQ+ Indie Game nominee", "https://rogueliker.com/gayming-awards-nominations/"]
+};
+const SPOT=[
+  ["women", "studio", "Positive Impact Games", "wlg26"],
+  ["women", "game", "Luna Abyss", "wlg26"],
+  ["women", "studio", "SlugGlove", "wlg26"],
+  ["women", "studio", "FlatNine Games", "wlg26"],
+  ["women", "studio", "Total Mayhem Games", "wlg26"],
+  ["women", "studio", "NEARstudios", "wlg26"],
+  ["women", "studio", "Qloud Games", "wlg26"],
+  ["women", "studio", "Mi'pu'mi Games GmbH", "wlg26"],
+  ["women", "studio", "Gentle Troll Entertainment", "wlg26"],
+  ["women", "studio", "Asteristic Game Studio", "wlg26"],
+  ["women", "studio", "Purple Ray Studio", "wlg26"],
+  ["women", "game", "Puppergeist", "wlg26"],
+  ["women", "studio", "Zymartu Games", "wlg26"],
+  ["women", "studio", "Lofty Sky Entertainment Inc.", "wlg26"],
+  ["women", "studio", "hapshapen games", "wlg26"],
+  ["women", "studio", "Nozomu Games", "wlg26"],
+  ["women", "studio", "TomorrowHead Studio", "wlg25"],
+  ["women", "studio", "Three Bees", "wlg25"],
+  ["women", "game", "Ascend to ZERO", "wlg25"],
+  ["women", "studio", "Winter Crew Studios", "wlg25"],
+  ["women", "studio", "The Game Bakers", "wlg25"],
+  ["women", "studio", "Kitten Cup Studio", "wlg25"],
+  ["women", "studio", "Tara Kan", "wlg25"],
+  ["black", "studio", "Spritewrench", "bvig26"],
+  ["black", "studio", "gazuntype", "bvig26"],
+  ["black", "studio", "Nyamakop", "bvigfeb26"],
+  ["black", "studio", "Pushing Vertices", "bvig26"],
+  ["black", "studio", "Strange Scaffold", "bvig26"],
+  ["black", "studio", "Akabaka", "bvigfeb26"],
+  ["black", "studio", "Caldera Interactive", "bvig26"],
+  ["sea", "studio", "HO! Games", "seags26"],
+  ["sea", "studio", "Toge Productions", "seags25"],
+  ["sea", "studio", "Winter Crew Studios", "seags25"],
+  ["sea", "studio", "Glory Jam", "seags25"],
+  ["sea", "studio", "Yangyang Mobile", "seags25"],
+  ["sea", "studio", "Skrollcat Studio", "seags26"],
+  ["sea", "studio", "Gambir Studio", "seags26"],
+  ["sea", "studio", "Bit Egg Inc.", "seags25"],
+  ["sea", "studio", "Clay Game Studio", "seags26"],
+  ["sea", "studio", "One More Dream Studios", "seags25"],
+  ["sea", "studio", "sunset visitor 斜陽過客", "seags26"],
+  ["sea", "studio", "Earthquack Games", "seags26"],
+  ["latam", "studio", "Panpipe Studio", "lags26"],
+  ["latam", "studio", "Recurring Dream", "lags26"],
+  ["latam", "studio", "Mudtek", "lags26"],
+  ["latam", "studio", "Ephemera Games", "lags26"],
+  ["latam", "studio", "Alkacer Game Studio", "lags26"],
+  ["latam", "studio", "Little Legendary", "lags26"],
+  ["latam", "game", "SoulQuest", "lags26"],
+  ["latam", "studio", "Marcel Enderle", "lags26"],
+  ["latam", "studio", "Genie Boy Games", "lags26"],
+  ["latam", "game", "Tenebris Somnia", "lags26"],
+  ["latam", "studio", "Mother Gaia Studio", "lags26"],
+  ["latam", "studio", "Asteristic Game Studio", "lags26"],
+  ["latam", "studio", "Oh Baby Games", "lags26"],
+  ["latam", "studio", "Novemtails", "lags26"],
+  ["latam", "studio", "Team Vultures", "lags26"],
+  ["black", "studio", "Red Raketa Studio", "afro26"],
+  ["black", "studio", "Clockwork Acorn", "afro26"],
+  ["black", "studio", "gazuntype", "afro26"],
+  ["black", "studio", "Strange Scaffold", "bvigfresh25"],
+  ["black", "studio", "Nyamakop", "xboxbhm26"],
+  ["latam", "studio", "Playstorm Studios", "lagstga25"],
+  ["latam", "studio", "NerdyPunkDev", "lagstga25"],
+  ["latam", "studio", "ACE Team", "lagstga25"],
+  ["sea", "studio", "Separuh Interactive", "sea2026list"],
+  ["sea", "studio", "Winter Crew Studios", "seaawards26"],
+  ["women", "studio", "MELLOW Games", "wdsale26"],
+  ["women", "studio", "Spellgarden Games", "wdsale26"],
+  ["lgbtq", "game", "Tales of Seikyu", "gay26", "about"],
+  ["lgbtq", "game", "Paralives", "gaymingcozy26", "about"],
+  ["lgbtq", "game", "Life is Strange: Reunion", "pride26", "about"],
+  ["lgbtq", "game", "1348 Ex Voto", "pride26", "about"],
+  ["lgbtq", "game", "Coffee Talk Tokyo", "pride26", "about"],
+  ["lgbtq", "game", "Thrifty Business", "gayming2026", "about"]
+];
+// Builds quick lookups so spotsOf() can find a game's groups by its title or by any of its developers.
+const SPOT_STUDIO={},SPOT_GAME={};
+const ABOUT_GROUPS=["black","lgbtq"];   // the only groups that may include games for their leads or story
+for(const [grp,kind,name,src,why] of SPOT){
+  const why2=why==="about"&&ABOUT_GROUPS.includes(grp)?"about":"made";   // anything else counts as "made by"
+  const m=kind==="studio"?SPOT_STUDIO:SPOT_GAME;(m[clean(name)]=m[clean(name)]||[]).push([grp,src,why2]);
+}
+// How each kind of match is described to creators, per group
+const SPOT_LABEL={
+  black:{made:"Made by a Black-led studio",       about:"Black lead / Black story"},
+  lgbtq:{made:"Made by an LGBTQ+ studio",         about:"LGBTQ+ lead / LGBTQ+ themes"},
+  women:{made:"Made by a women-led studio"},
+  latam:{made:"Made by a Latin American studio"},
+  sea:  {made:"Made by a Southeast Asian studio"}
+};
+// One line per reason, e.g. "LGBTQ+ lead / LGBTQ+ themes · named in PRIDE: …". The verb changes with the kind.
+const spotLines=g=>{
+  const seen=new Set(),out=[];
+  for(const [grp,src,why] of spotsOf(g)){
+    const key=grp+why+src;if(seen.has(key))continue;seen.add(key);
+    out.push({text:SPOT_LABEL[grp][why],verb:why==="about"?"named in":"featured in",src});
+  }
+  return out;
+};
+function spotsOf(g){
+  if(g._spots)return g._spots;                       // worked out once per game, then remembered
+  const out=[...(SPOT_GAME[clean(g.title)]||[])];
+  for(const d of (g.dev||"").split(","))out.push(...(SPOT_STUDIO[clean(d)]||[]));
+  return g._spots=out;
+}
+// The text the keyword search reads for a game. Spotlight groups are deliberately NOT in here,
+// so typed keywords can never pull a game in because of who made it; only the pills do that.
+function hayOf(g){return clean(g.title+" "+g.genre+" "+g.description)}
+// The pills under the search box. Each pill is a wheel built only from the SPOT list above:
+// no keyword search, so a typed word like "black" or "pride" can never pull these games in by accident.
+// "groups" says which SPOT groups the pill includes (a pill could combine several).
+// Each pill's colours live in the CSS as .spot-<id> (search for "Spotlight pill colours").
+// The pills are sorted alphabetically when drawn, so the order here doesn't matter.
+const SPOT_WHEELS=[
+  {id:"women", label:"Women-Led",    groups:["women"]},
+  {id:"latam", label:"LATAM",        groups:["latam"]},
+  {id:"sea",   label:"SEA Games",    groups:["sea"]},
+  {id:"black", label:"Black Voices", groups:["black"]},
+  {id:"lgbtq", label:"LGBTQ+",       groups:["lgbtq"]}
+];
+// A wheel's games: anything whose spotsOf() includes one of its groups
+const inWheel=(w,g)=>spotsOf(g).some(([grp])=>w.groups.includes(grp));
+// The sources behind a wheel, for the line under it
+const wheelSources=w=>[...new Set(SPOT.filter(e=>w.groups.includes(e[0])).map(e=>SOURCES[e[3]][0]))];
 const E={},IDX={};
 for(const [k,v] of Object.entries(KW)){
   const p=v.split(";");if(p.length===3)p.splice(1,0,""); // older 3-part lines: all related words are supporting
-  const L=z=>z?z.split(",").map(clean).filter(Boolean):[];
-  E[k]={a:[clean(k),...L(p[0])],c:L(p[1]),s:L(p[2]),x:L(p[3]),m:+p[4]||2};
+  // L() turns "a,b,@dark" into a clean list, swapping any @group for that group's words
+  const L=z=>{
+    if(!z)return [];
+    const list=z.split(",").flatMap(w=>w.trim().startsWith("@")?GROUPS[w.trim().slice(1)].split(","):[w]).map(clean).filter(Boolean);
+    // hit() already matches plurals, so "puzzles" is a duplicate of "puzzle" and would score it twice
+    return [...new Set(list)].filter(t=>!(t.endsWith("s")&&list.includes(t.slice(0,-1))));
+  };
+  // Field 6 ("needs"): a RELATED match must also contain at least one of these words.
+  // Direct matches (the keyword itself is in the text) don't need it.
+  E[k]={a:[clean(k),...L(p[0])],c:L(p[1]),s:L(p[2]),x:L(p[3]),m:+p[4]||2,n:L(p[5])};
   E[k].a.forEach(t=>{if(!(t in IDX))IDX[t]=k});
 }
+// Words that must always be searched exactly as typed, never auto-switched to a similar keyword.
+// "black" could mean a dark theme and "sea" an ocean theme, so they shouldn't jump to the studio groups.
+const LITERAL=new Set(["black","sea"]);
 function resolve(raw){
   const t=clean(raw);if(IDX[t])return {e:E[IDX[t]],k:IDX[t]};
+  if(LITERAL.has(t))return {lit:t,note:""};
   const s=Object.keys(E).filter(k=>clean(k).startsWith(t.slice(0,3))||clean(k).includes(t));
   if(s.length===1)return {e:E[s[0]],k:s[0],note:"“"+raw+"” → "+s[0]};
   return {lit:t,note:"“"+raw+"” isn’t a curated keyword, exact word only"+(s.length?" (try: "+s.slice(0,4).join(", ")+")":"")};
 }
+// Words people type that mean a curated keyword, but that would be unsafe to match in descriptions.
+// "fall" is the US word for autumn, but in game blurbs it nearly always means "fallen"/"falls apart".
+// A value can be one keyword or a list. Months expand to their season plus UK-relevant holidays,
+// so "december" fills the wheel with winter + christmas games, no outside services needed.
+const QUERY_ALIAS={"fall":"autumn","fall season":"autumn","holiday season":"christmas","festive season":"christmas","back to school":"school","summer holidays":"summer","summer holiday":"summer","kids":"family friendly","for kids":"family friendly","games for kids":"family friendly","play with kids":"family friendly","children":"family friendly","family game night":"family friendly","armistice day":"remembrance","poppy day":"remembrance","date":"date night","couples":"date night","earth":"earth day","climate":"earth day","eco":"earth day",
+"january":["winter","new year"],"february":["winter","valentine's day","lunar new year"],"march":["spring","st patrick's day","easter","mother's day"],"mothering sunday":"mother's day",
+"april":["spring","easter","earth day"],"may":"spring","june":["summer","father's day"],"july":"summer","august":"summer","september":["autumn","school"],
+"october":["autumn","halloween"],"november":["autumn","bonfire night","diwali","remembrance"],"december":["winter","christmas"]};
+// Short month names work too ("dec", "oct"). "may" and "march" are full words already.
+const SHORT={jan:"january",feb:"february",mar:"march",apr:"april",jun:"june",jul:"july",aug:"august",sep:"september",sept:"september",oct:"october",nov:"november",dec:"december"};
+for(const s in SHORT)QUERY_ALIAS[s]=QUERY_ALIAS[SHORT[s]];
+// Filler words to ignore, so "christmas games" or "cosy vibes" still work
+const FILLER=new Set(["game","games","themed","theme","vibes","vibe","video","videos","for","and","with","indie games"]);
+// Splits "cosy winter" or "spooky autumn" into known keywords, including two-word ones like "new year".
+function splitWords(part){
+  const w=clean(part).split(" ").filter(x=>x&&!FILLER.has(x));
+  const out=[];
+  for(let i=0;i<w.length;){
+    let found=0;
+    for(let n=Math.min(4,w.length-i);n>0;n--){               // try the longest phrase first
+      const p=w.slice(i,i+n).join(" ");
+      if(IDX[p]||QUERY_ALIAS[p]){out.push(p);found=n;break}
+    }
+    if(!found){return null}                                    // an unknown word: give up splitting
+    i+=found;
+  }
+  return out.length?out:null;
+}
 function buildQuery(raw){
-  const items=raw.split(",").map(x=>x.trim()).filter(Boolean).map(resolve);
+  const parts=[];
+  for(const part of raw.split(",").map(x=>x.trim()).filter(Boolean)){
+    const t=clean(part);
+    if(IDX[t]||QUERY_ALIAS[t]){parts.push(t);continue}       // already one known keyword
+    parts.push(...(splitWords(part)||[part]));               // otherwise try splitting on spaces
+  }
+  // Swap each alias for its keyword(s). [].concat(q) turns a single keyword into a one-item list,
+  // so one-keyword and many-keyword aliases are handled the same way.
+  const items=parts.flatMap(p=>{
+    const q=QUERY_ALIAS[clean(p)];
+    if(!q)return [resolve(p)];
+    const ks=[].concat(q);
+    return ks.map((k,i)=>({...resolve(k),note:i===0?"“"+p+"” → "+ks.join(" + "):""}));
+  });
   return {items,base:items.map(i=>i.k||i.lit)};
 }
 // ---------- data ----------
@@ -260,11 +518,21 @@ function norm(raw){
     return {title:pick("title","name","game","summary"),
       genre:pick("genre","genres","genres[*].description","tags","category","categories"),
       description:pick("description","short description","desc","summary_text","notes","about","details"),
-      date:pick("release date","date"),url:pick("steam url","url"),trailer:pick("trailer","video")};
+      date:pick("release date","date"),url:pick("steam url","url"),trailer:pick("trailer","video"),dev:pick("developers","developer")};
   }).filter((g,i,a)=>g.title&&a.findIndex(h=>h.title===g.title)===i);
 }
-function setGames(a){games=a;document.getElementById("count").textContent=games.length+" games loaded"}
-try{const s=localStorage.getItem("gw_games");setGames(s?norm(JSON.parse(s)):norm(SAMPLE))}catch(e){setGames(norm(SAMPLE))}
+function setGames(a){games=a;document.getElementById("count").textContent=games.length+" games loaded";drawPills()}
+// "ready" is false while a first-time visitor is still waiting for the real list.
+// Before, they got the 14 sample games instead, without being told.
+const ONLINE=location.protocol.startsWith("http");
+let ready=true;
+try{
+  const s=localStorage.getItem("gw_games");
+  if(s)setGames(norm(JSON.parse(s)));
+  else if(ONLINE){ready=false;games=[];document.getElementById("count").textContent="loading games…"}
+  else setGames(norm(SAMPLE));
+}catch(e){if(ONLINE){ready=false;games=[];document.getElementById("count").textContent="loading games…"}else setGames(norm(SAMPLE))}
+drawPills();   // shows the pills straight away (greyed out until the list has loaded)
 const $=id=>document.getElementById(id);
 $("load").onclick=()=>$("file").click();
 $("file").onchange=e=>{
@@ -284,13 +552,22 @@ $("kwl").innerHTML=Object.keys(KW).map(k=>`<option value="${k}">`).join("");
 // Dev tools (change the data source) only appear at yoursite/?dev
 if(new URLSearchParams(location.search).has("dev"))$("dev").hidden=false;
 // Auto-sync from the sheet when hosted on a normal website
-if(location.protocol.startsWith("http")){fetch(SHEET).then(r=>r.json()).then(raw=>{const g=norm(raw);if(g.length){setGames(g);try{localStorage.setItem("gw_games",JSON.stringify(g))}catch(_){}}}).catch(()=>{})}
+// If the sheet can't be reached and nothing is cached, say so instead of failing silently.
+if(ONLINE){fetch(SHEET).then(r=>r.json()).then(raw=>{const g=norm(raw);if(g.length){setGames(g);ready=true;try{localStorage.setItem("gw_games",JSON.stringify(g))}catch(_){}}else throw 0}).catch(()=>{if(!ready)document.getElementById("count").textContent="Couldn’t load the game list. Please refresh in a minute."})}
 // ---------- matching ----------
 const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
 const reCache=new Map();
+// Whole-word match plus common word endings only.
+// e.g. "harvest" matches harvest/harvests/harvesting, but "easter" no longer matches "eastern"
+// and "planes" no longer matches "planet". Very short words (3 letters or fewer) only allow -s/-es,
+// so "war" can't turn into "wary" and "cat" can't turn into "cater".
 function hit(text,t){
   let r=reCache.get(t);
-  if(!r){r=t.length<=5?new RegExp("\\b"+esc(t)+"(?:s|es)?\\b","i"):new RegExp("\\b"+esc(t.replace(/s$/,"")),"i");reCache.set(t,r)}
+  if(!r){
+    const base=t.length>4&&/[^s]s$/.test(t)?t.slice(0,-1):t;   // "quests" -> "quest"
+    const ends=t.length<=3?"(?:s|es)?":"(?:s|es|d|ed|ing|er|ers|y|ly)?";
+    r=new RegExp("\\b"+esc(base)+ends+"\\b","i");reCache.set(t,r);
+  }
   return r.test(text);
 }
 let direct=[],related=[],current="",pool=[],Q=null;
@@ -301,11 +578,13 @@ function scoreGame(e,hay){
   let sc=0;const w=[];
   for(const t of e.c)if(hit(hay,t)){sc+=2;w.push(t)}
   for(const t of e.s)if(hit(hay,t)){sc+=1;w.push(t)}
-  return sc>=e.m?{d:false,sc,w}:null;
+  if(sc<e.m)return null;
+  if(e.n.length&&!e.n.some(t=>hit(hay,t)))return null;   // "needs" check: right tone as well as right words
+  return {d:false,sc,w};
 }
 function search(){
   direct=[];related=[];
-  HAY=games.map(g=>clean(g.title+" "+g.genre+" "+g.description));
+  HAY=games.map(hayOf);
   games.forEach((g,i)=>{
     const hay=HAY[i];g._why="";let d=false,sc=0;const why=[];
     for(const q of Q.items){
@@ -319,8 +598,25 @@ function search(){
   related.sort((a,b)=>b.sc-a.sc);
   related=related.map(x=>x.g);
 }
+// Hand-picked "try instead" keywords for occasions, since the occasions are the ones that run thin.
+// These are what a creator making that video would reasonably widen to. Edit freely.
+const NEAR={
+  "christmas":["winter","wholesome","family friendly"],"easter":["spring","cute","animals"],"halloween":["spooky","horror","supernatural"],
+  "bonfire night":["autumn","new year","spooky"],"diwali":["new year","lunar new year","fantasy"],"lunar new year":["new year","mythology","fantasy"],
+  "thanksgiving":["autumn","farming","family"],"st patrick's day":["mythology","fairy tale","spring"],"new year":["friends","winter","wholesome"],
+  "valentine's day":["romance","date night","wholesome"],"mother's day":["family","wholesome","father's day"],"father's day":["family","wholesome","mother's day"],
+  "remembrance":["historical","war","drama"],
+  "earth day":["nature","animals","farming"],"date night":["co-op","romance","cozy"],"family friendly":["cute","wholesome","co-op"],
+  "autumn":["spooky","farming","cozy"],"winter":["christmas","cozy","survival"],"spring":["farming","nature","cute"],"summer":["island","fishing","relaxing"]
+};
 function suggestions(){
-  const mine=new Set(Q.items.filter(i=>i.e).flatMap(i=>[...i.e.a,...i.e.c,...i.e.s])),used=new Set(Q.items.map(i=>i.k));
+  const used=new Set(Q.items.map(i=>i.k));
+  // Hand-picked suggestions first, with live game counts so dead ends aren't suggested
+  const picked=[...new Set(Q.items.flatMap(i=>NEAR[i.k]||[]))].filter(k=>E[k]&&!used.has(k))
+    .map(k=>({k,n:HAY.filter(h=>scoreGame(E[k],h)).length})).filter(x=>x.n>=3);
+  if(picked.length)return picked.slice(0,3).map(x=>x.k+" ("+x.n+")");
+  // Otherwise fall back to keywords that share words with the search
+  const mine=new Set(Q.items.filter(i=>i.e).flatMap(i=>[...i.e.a,...i.e.c,...i.e.s]));
   return Object.keys(E).filter(k=>!used.has(k)).map(k=>{
     const e=E[k],ov=[...e.a,...e.c,...e.s].filter(w=>mine.has(w)).length;
     if(!ov)return null;
@@ -328,6 +624,61 @@ function suggestions(){
     return n>=3?{k,n,ov}:null;
   }).filter(Boolean).sort((a,b)=>b.ov-a.ov||b.n-a.n).slice(0,3).map(x=>x.k+" ("+x.n+")");
 }
+// ---------- dev: keyword health report ----------
+// Scores every game against every keyword, so you can spot weak keywords as the game list changes.
+// "Thin" = fewer than 5 games (the wheel will feel empty). "Broad" = over a quarter of the library
+// (the keyword isn't narrowing anything down). "Top related words" shows which words pull in the
+// related games, so if one word is dragging in bad picks you can see it and move or exclude it.
+const THIN=5,BROAD=0.25;
+function keywordReport(){
+  const hay=games.map(hayOf);
+  return Object.keys(E).map(k=>{
+    let d=0,r=0;const words={};
+    for(const h of hay){
+      const res=scoreGame(E[k],h);if(!res)continue;
+      if(res.d)d++;else{r++;for(const w of res.w)words[w]=(words[w]||0)+1}
+    }
+    const top=Object.entries(words).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([w,n])=>w+" ("+n+")").join(", ");
+    const total=d+r,flag=total<THIN?"thin":total>games.length*BROAD?"broad":"";
+    return {k,d,r,total,flag,top};
+  }).concat(SPOT_WHEELS.map(w=>{
+    // pill wheels: every game is a "direct" match, and the last column lists the sources instead
+    const d=games.filter(g=>inWheel(w,g)).length;
+    return {k:"[pill] "+w.label,d,r:0,total:d,flag:d<THIN?"thin":"",top:wheelSources(w).length+" sources"};
+  }));
+}
+let repSort="total",repAsc=true;
+function showReport(){
+  const rows=keywordReport();
+  rows.sort((a,b)=>{const x=a[repSort],y=b[repSort];return (typeof x==="string"?x.localeCompare(y):x-y)*(repAsc?1:-1)});
+  const box=$("rep");box.textContent="";
+  const head=document.createElement("div");head.className="head";
+  const thin=rows.filter(r=>r.flag==="thin").length,broad=rows.filter(r=>r.flag==="broad").length;
+  const h=document.createElement("strong");h.textContent=`${rows.length} keywords · ${games.length} games · ${thin} thin · ${broad} broad`;
+  const x=document.createElement("button");x.className="pill";x.textContent="close";x.onclick=()=>{box.hidden=true};
+  head.append(h,x);box.appendChild(head);
+  const t=document.createElement("table");
+  const cols=[["k","keyword"],["d","direct"],["r","related"],["total","total"],["flag","flag"],["top","top related words"]];
+  const tr=document.createElement("tr");
+  for(const [key,label] of cols){
+    const th=document.createElement("th");th.textContent=label+(repSort===key?(repAsc?" ▲":" ▼"):"");
+    th.onclick=()=>{repAsc=repSort===key?!repAsc:true;repSort=key;showReport()};   // tap a heading to sort by it
+    tr.appendChild(th);
+  }
+  t.appendChild(tr);
+  for(const r of rows){
+    const row=document.createElement("tr");
+    for(const [key] of cols){
+      const td=document.createElement("td");td.textContent=r[key];
+      if(typeof r[key]==="number")td.className="n";
+      if(key==="flag"&&r.flag)td.className=r.flag==="thin"?"thin":"big";
+      row.appendChild(td);
+    }
+    t.appendChild(row);
+  }
+  box.appendChild(t);box.hidden=false;
+}
+$("report").onclick=()=>{if(!ready){$("count").textContent="Still loading the game list, one moment…";return}showReport()};
 function buildPool(){
   pool=direct.concat($("rel").checked?related:[]);
   $("stats").textContent=`“${current}” · ${direct.length} direct`+($("rel").checked?` + ${related.length} related`:"");
@@ -389,7 +740,15 @@ function finish(){
   $("result").innerHTML=`<h2></h2><p></p><button class="pill" id="rm">remove & spin again</button>`;
   $("result").querySelector("h2").textContent="🎉 "+g.title;
   const p=$("result").querySelector("p");
-  p.textContent=(g.genre?g.genre+" · ":"")+(g.date?(/\d/.test(g.date)?"releases "+g.date:g.date)+" · ":"")+(isDirect?"keyword match":"related ("+(g._why||"")+")");
+  // Build the line from a list, skipping empty parts, so the " · " separators never double up.
+  // Pill wheels have no keyword, so they get no match wording.
+  p.textContent=[g.genre,
+    g.date?(/\d/.test(g.date)?"releases "+g.date:g.date):"",
+    Q.items.length?(isDirect?"keyword match":"related ("+(g._why||"")+")"):""
+  ].filter(Boolean).join(" · ");
+  // If the game is in a spotlight group, say which showcase featured it
+  const sp=spotsOf(g);
+  if(sp.length)p.append(" · "+[...new Set(spotLines(g).map(l=>l.text))].join(" · "));
   if(/^https?:\/\//.test(g.url||"")){const a=document.createElement("a");a.href=g.url;a.target="_blank";a.rel="noopener";a.textContent=" · Steam page";a.style.color="var(--accent)";p.appendChild(a)}
   $("rm").onclick=()=>{pool.splice(winner,1);$("result").innerHTML="";draw()};
   setTimeout(()=>showPop(g),400);
@@ -417,6 +776,12 @@ function showPop(g){
   }else add("p","No trailer listed for this game.","sm");
   if(/^https?:\/\//.test(g.url||"")){const p=add("p",null);const a=document.createElement("a");a.href=g.url;a.target="_blank";a.rel="noopener";a.textContent="Store page →";p.appendChild(a)}
   add("p",g.description||"No description available.","desc");
+  // Spotlight sources, each linking to the page that lists the game or studio
+  // e.g. "Made by a Black-led studio · featured in Black Voices in Gaming 2026" (the source is a link)
+  for(const l of spotLines(g)){
+    const sp=add("p",l.text+" · "+l.verb+" ","sm");const a=document.createElement("a");
+    a.href=SOURCES[l.src][1];a.target="_blank";a.rel="noopener";a.textContent=SOURCES[l.src][0];sp.appendChild(a);
+  }
   $("pop").classList.add("show");
 }
 $("pop").onclick=e=>{if(e.target.id==="pop")hidePop()};
@@ -433,6 +798,40 @@ function confetti(){
     document.body.appendChild(s);
   }
 }
+function drawPills(){
+  // function declarations are "hoisted", so setGames can call this even though it's written further down
+  const box=document.getElementById("spots");box.textContent="";
+  // [...SPOT_WHEELS] copies the list so sorting doesn't change the original; localeCompare sorts A to Z
+  for(const w of [...SPOT_WHEELS].sort((a,b)=>a.label.localeCompare(b.label))){
+    const n=games.filter(g=>inWheel(w,g)).length;
+    const b=document.createElement("button");b.type="button";
+    b.className="spot-"+w.id;
+    const label=document.createElement("span");label.textContent=w.label;b.appendChild(label);
+    b.disabled=!n;b.title=n?"Spin a wheel of "+n+" games from "+w.label+" showcases":"No games from these showcases in the list yet";
+    b.onclick=()=>{if(!ready){document.getElementById("count").textContent="Still loading the game list, one moment…";return}goSpot(w)};
+    box.appendChild(b);
+  }
+}
+// Builds a wheel straight from the spotlight list (no keyword matching at all)
+function goSpot(w){
+  Q={items:[],base:[w.label]};current=w.label;
+  direct=games.filter(g=>inWheel(w,g));related=[];
+  games.forEach(g=>g._why="");
+  buildPool();
+  $("stats").textContent="“"+w.label+"” · "+direct.length+(direct.length===1?" game":" games");
+  $("start").style.display="none";$("app").style.display="flex";
+  document.body.classList.add("themed");confetti();
+  size();$("result").innerHTML="";
+  // For groups that allow "about", show the mix so creators know what they're working with
+  let mix="";
+  if(w.groups.some(g=>ABOUT_GROUPS.includes(g))){
+    const isAbout=g=>spotsOf(g).some(([grp,,why])=>w.groups.includes(grp)&&why==="about")&&!spotsOf(g).some(([grp,,why])=>w.groups.includes(grp)&&why==="made");
+    const ab=direct.filter(isAbout).length;
+    mix=" · "+(direct.length-ab)+" made by · "+ab+" about";
+  }
+  $("terms").textContent=w.label+" wheel"+mix+" · sources: "+wheelSources(w).join("; ");
+  draw();startIdle();
+}
 function go(k){
   Q=buildQuery(k);
   current=k;search();buildPool();
@@ -444,7 +843,11 @@ function go(k){
   $("terms").textContent="Matching: "+Q.base.slice(0,8).join(", ")+(notes.length?" · "+notes.join(" · "):"")+(sg.length?" · Few matches, try: "+sg.join(", "):"");
   draw();startIdle();
 }
-$("kw").addEventListener("keydown",e=>{if(e.key==="Enter"&&$("kw").value.trim())go($("kw").value)});
+$("kw").addEventListener("keydown",e=>{
+  if(e.key!=="Enter"||!$("kw").value.trim())return;
+  if(!ready){$("count").textContent="Still loading the game list, one moment…";return}
+  go($("kw").value);
+});
 $("back").onclick=()=>{
   cancelAnimationFrame(raf);spinning=false;$("spin").disabled=false;
   $("app").style.display="none";$("start").style.display="flex";
