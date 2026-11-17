@@ -454,13 +454,44 @@ for(const [k,v] of Object.entries(KW)){
 // Words that must always be searched exactly as typed, never auto-switched to a similar keyword.
 // "black" could mean a dark theme and "sea" an ocean theme, so they shouldn't jump to the studio groups.
 const LITERAL=new Set(["black","sea"]);
-function resolve(raw){
-  const t=clean(raw);if(IDX[t])return {e:E[IDX[t]],k:IDX[t]};
-  if(LITERAL.has(t))return {lit:t,note:""};
-  const s=Object.keys(E).filter(k=>clean(k).startsWith(t.slice(0,3))||clean(k).includes(t));
-  if(s.length===1)return {e:E[s[0]],k:s[0],note:"“"+raw+"” → "+s[0]};
-  return {lit:t,note:"“"+raw+"” isn’t a curated keyword, exact word only"+(s.length?" (try: "+s.slice(0,4).join(", ")+")":"")};
+// How many single-letter changes turn word a into word b (adding, removing or swapping a letter).
+// Used to catch typos like "horrer" -> "horror" without guessing wildly.
+function editDistance(a,b){
+  const d=Array.from({length:a.length+1},(_,i)=>[i]);
+  for(let j=1;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return d[a.length][b.length];
 }
+// Reverse lookup: which keywords list a word among their related words?
+// REL.core["scary"] = ["horror"], REL.sup["snow"] = ["christmas"], and so on. Built once, the first time it's needed.
+let REL=null;
+function relatedKeywords(t){
+  if(!REL){REL={core:{},sup:{}};
+    for(const [k,e] of Object.entries(E)){
+      for(const w of e.c)(REL.core[w]=REL.core[w]||[]).push(k);
+      for(const w of e.s)(REL.sup[w]=REL.sup[w]||[]).push(k);
+    }}
+  const forms=[t,t.replace(/e?s$/,""),t+"s"];   // "ghosts" also finds "ghost", and the other way round
+  const find=m=>[...new Set(forms.flatMap(f=>m[f]||[]))];
+  const core=find(REL.core);
+  return [...new Set([...core,...find(REL.sup)])].slice(0,3);   // strong (core) matches first, then supporting; at most 3
+}
+// Turns one typed word or phrase into one or more search items.
+function resolveAll(raw){
+  const t=clean(raw);
+  if(IDX[t])return [{e:E[IDX[t]],k:IDX[t]}];          // 1. a keyword or one of its other names
+  if(LITERAL.has(t))return [{lit:t,note:""}];          // 2. words we always search exactly
+  const rel=relatedKeywords(t);                        // 3. a related word, e.g. "scary" -> horror
+  if(rel.length)return [...rel.map((k,i)=>({e:E[k],k,note:i?"":"“"+raw+"” → "+rel.join(" + ")+" (related word)"})),
+                        {lit:t,note:""}];              //    ...and still match the exact word too
+  // 4. a typo or the start of a keyword ("autum", "christ"), but never a loose 3-letter guess
+  const s=Object.keys(E).filter(k=>{const c=clean(k);
+    return (t.length>=3&&c.startsWith(t))||(t.length>=4&&editDistance(c,t)<=(t.length>=7?2:1));});
+  if(s.length===1)return [{e:E[s[0]],k:s[0],note:"“"+raw+"” → "+s[0]}];
+  return [{lit:t,note:"“"+raw+"” isn’t a curated keyword, exact word only"+(s.length?" (try: "+s.slice(0,4).join(", ")+")":"")}];
+}
+const resolve=raw=>resolveAll(raw)[0];   // for places that only ever pass a known keyword
 // Words people type that mean a curated keyword, but that would be unsafe to match in descriptions.
 // "fall" is the US word for autumn, but in game blurbs it nearly always means "fallen"/"falls apart".
 // A value can be one keyword or a list. Months expand to their season plus UK-relevant holidays,
@@ -500,7 +531,7 @@ function buildQuery(raw){
   // so one-keyword and many-keyword aliases are handled the same way.
   const items=parts.flatMap(p=>{
     const q=QUERY_ALIAS[clean(p)];
-    if(!q)return [resolve(p)];
+    if(!q)return resolveAll(p);
     const ks=[].concat(q);
     return ks.map((k,i)=>({...resolve(k),note:i===0?"“"+p+"” → "+ks.join(" + "):""}));
   });
