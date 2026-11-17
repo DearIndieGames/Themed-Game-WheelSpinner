@@ -109,9 +109,10 @@ autumn:["#c8561e","#e09a2d","#8c3b14","#d97b3a","#a8692a","#b5382a"]};
 const FX={winter:["❄️","❅","❆"],spring:["🌸","🌷","🍃"],summer:["☀️","🌊","🌴"],autumn:["🍂","🍁","🎃"]};
 document.body.classList.add(season);
 // ---------- hand-made keyword lists (edit freely) ----------
-// format:  keyword:"extra names for it ; 10 related words ; exclusion words"
-// A game is a direct match if its title/genre/description contains the keyword or an extra name.
-// Otherwise it needs 2+ related words. Any exclusion word removes the game.
+// format:  keyword:"extra names ; core words ; supporting words ; exclusion words ; minimum score"
+// Direct match: the keyword or an extra name appears in the title/genre/description.
+// Otherwise related: a core word scores 2, a supporting word scores 1, and the game needs the minimum (default 2).
+// So one core word is enough, but supporting words need company. Any exclusion word removes the game.
 const KW={
 "indie":";independent,solo developer,small team,handcrafted,passion project,quirky,experimental,artistic,unique,charming;",
 "adventure":";journey,quest,expedition,voyage,discover,unravel,odyssey,travel,narrative,explore;",
@@ -134,7 +135,7 @@ const KW={
 "management":"manager,tycoon;run,business,staff,budget,resources,optimize,empire,logistics,operate,hire;",
 "first-person":"first person,fps;first-person view,immersive,walking simulator,hands,aim,lantern,look around,perspective,environment,through your eyes;",
 "tactical":"tactics;squad,positioning,cover,planning,grid,strategic,turn-based,flank,mission,outmaneuver;",
-"metroidvania":";interconnected map,backtracking,unlock abilities,explore,labyrinth,secrets,upgrades,boss,side-scrolling,sequence break;",
+"metroidvania":";interconnected map,backtracking,unlock abilities,ability gated,sequence break;explore,labyrinth,secrets,upgrades,boss,side-scrolling,abilities,map,platforming,exploration;;3",
 "hunting":"hunt,hunter;prey,track,stalk,wildlife,rifle,trophy,game animals,woods,bow,tracks;",
 "pixel art":"pixel,pixelated,8-bit,16-bit;retro,sprite,lo-fi,nostalgic,old-school,classic,throwback,chunky,console era,handcrafted;",
 "hand-drawn":"hand drawn,hand-painted,hand painted;illustrated,watercolor,painted,sketch,storybook,ink,artistic,animation,cartoon,paper;",
@@ -164,7 +165,7 @@ const KW={
 "heist":"robbery,burglar;steal,vault,crew,thieves,loot,plan,casino,getaway,bank,infiltrate;",
 "visual novel":"visual novels,kinetic novel;dialogue,choices,reading,sprites,branching story,romance route,narrative,text-based,characters,endings;",
 "choices":"choice,decisions;consequences,matter,branching,moral,decide,fate,dilemma,paths,outcomes,determine;",
-"mystery":"mysterious,whodunit,enigma;investigate,clues,secrets,uncover,unravel,detective,suspect,puzzle,disappearance,truth;",
+"mystery":"mysterious,whodunit,enigma;investigate,clues,whodunit,detective,suspect,disappearance,unravel;secrets,uncover,puzzle,truth,hidden,strange,secret,solve;;3",
 "dark":"darkness,dark fantasy,gothic,grim,grimdark;gloomy,shadowy,bleak,sinister,macabre,ominous,twisted,somber,eerie,brooding;dark mode",
 "cozy":"cosy;comfy,warm,gentle,relaxing,heartwarming,peaceful,snug,charming,tranquil,soothing;gore,brutal",
 "challenging":"difficult,punishing,unforgiving,soulslike,souls-like;brutal,skill,mastery,test your skills,learn from death,demanding,trial,relentless,hardcore,steep difficulty;",
@@ -204,20 +205,20 @@ const KW={
 "cats":"cat,kitten,kittens,kitty,feline;meow,purr,paws,whiskers,nine lives,tabby,cat lady,fur,nap,yarn;",
 "zombie":"zombies,undead,walkers;outbreak,horde,apocalypse,brains,survivors,plague,bite,shamble,living dead,infected;",
 "western":"wild west,cowboy,outlaw,frontier;saloon,gunslinger,sheriff,revolver,desert,bounty,ranch,old west,bandits,horse;",
-"winter":"wintry,wintertime;snow,snowy,frost,frozen,blizzard,icy,arctic,sled,freezing,snowman;",
-"spring":"springtime;blossom,cherry blossom,bloom,flowers,rain,rebirth,garden,meadow,renewal,fresh;spring loaded,spring up,spring into,spring to life,hot spring",
-"summer":"summery,summertime,summer holiday,summer vacation;beach,sunny,sunshine,vacation,tropical,swimming,heat,ice cream,holiday,sunset;",
-"autumn":"autumnal;leaves,falling leaves,harvest,pumpkin,golden leaves,crisp,cider,foliage,scarecrow,cozy;",
-"christmas":"xmas,santa,yuletide,christmassy;snow,reindeer,sleigh,presents,gifts,elf,mistletoe,gingerbread,carol,north pole;",
-"halloween":"trick or treat,all hallows;pumpkin,ghosts,witches,costumes,candy,haunted house,skeletons,spooky,bats,graveyard;",
-"new year":"new years,new years eve,nye,hogmanay;fireworks,countdown,midnight,resolution,champagne,fresh start,celebration,party,confetti,toast;",
-"easter":"easter bunny;bunny,rabbit,chocolate,spring,chick,basket,painted eggs,carrot,pastel,hatch;easter egg",
-"valentine's day":"valentine;love,romance,hearts,roses,date,chocolate,couple,sweetheart,cupid,flowers;",
-"thanksgiving":"turkey day;turkey,feast,pilgrims,harvest,gratitude,family dinner,pumpkin pie,cranberry,autumn,gathering;",
-"bonfire night":"guy fawkes,fireworks night,november 5th,5th of november;fireworks,bonfire,sparklers,effigy,remember remember,gunpowder,november,toffee apple,smoke,night sky;",
-"st patrick's day":"st patrick,st paddys day;irish,shamrock,clover,leprechaun,green,pot of gold,celtic,ireland,pub,luck;",
-"lunar new year":"chinese new year,spring festival;red envelope,dragon,lanterns,zodiac,dumplings,firecrackers,lion dance,festival,celebration,fireworks;",
-"diwali":"festival of lights,deepavali;lamps,lights,rangoli,sweets,fireworks,india,lantern,celebration,festival,candles;",
+"winter":"wintry,wintertime,snowman;snow,snowy,frozen,frost,icy,ice,arctic,blizzard,glacier,polar,penguin,tundra,sled,freezing,avalanche;cold,mountain,cabin,expedition,wind,storm,fireplace,warm,isolated,fur;ice cream",
+"spring":"springtime;blossom,cherry blossom,bloom,blooming,rebirth,renewal,meadow,petals,seedling;flowers,flower,garden,rain,fresh,farm,farming,sunshine,birds,butterflies,nature,growth,planting,cozy,village;spring loaded,spring up,spring into,spring to life,hot spring",
+"summer":"summery,summertime,summer holiday,summer vacation;beach,sunny,sunshine,tropical,vacation,swimming,surf,ice cream,seaside,holiday;island,ocean,sun,sea,boat,camp,festival,heat,sunset,sail,fishing,cozy;",
+"autumn":"autumnal,pumpkin,scarecrow,cider;orchard,woodland,foliage,pumpkins;leaves,harvest,forest,mushroom,cozy,farm,village,campfire,wind,rain,storm,fog,witch,cabin;;3",
+"christmas":"xmas,santa,yuletide,christmassy,festive,reindeer,sleigh,mistletoe,gingerbread,snowman,north pole,carol;snow,snowy,winter,frozen,frost,icy,glacier,arctic,blizzard,penguin;gift,gifts,toy,toys,heartwarming,warm,tradition,festival,lantern,kindness,joy,wish,cookies,tea,cozy;",
+"halloween":"trick or treat,jack o lantern,all hallows;witch,ghost,haunted,spooky,skeleton,vampire,graveyard,werewolf,ghoul,macabre,costume,candy;curse,cursed,monster,nightmare,creepy,eerie,supernatural,spirit;;3",
+"new year":"new years,new years eve,nye,hogmanay;fireworks,countdown,resolution,confetti,champagne,midnight;party,celebrate,celebration,stars,wish,fresh,start over,joy,together,festival;",
+"easter":"easter bunny;bunny,rabbit,chick,pastel,egg hunt,painted eggs,carrot;spring,flowers,garden,chocolate,cute,hatch,basket,egg,sweet,family;easter egg",
+"valentine's day":"valentine;romance,roses,cupid,sweetheart,dating,couple,courtship,flirt,crush;love,heart,chocolate,flowers,kiss,relationship,partner,wholesome,cozy,friendship;",
+"thanksgiving":"turkey day;turkey,feast,pilgrims,gratitude,thankful,cranberry,pumpkin pie;harvest,family,dinner,community,farm,gathering,warm,cozy;;3",
+"bonfire night":"guy fawkes,fireworks night;fireworks,sparklers,effigy,gunpowder,remember remember;bonfire,campfire,fire,night,smoke,gather,autumn,cold,november,celebration;",
+"st patrick's day":"st patrick,st paddys day,leprechaun,shamrock;clover,celtic,irish,ireland,pot of gold;pub,luck,green,folklore,fairy,drink,gold,rainbow,mythology,pint;",
+"lunar new year":"chinese new year,spring festival,year of the;red envelope,lantern,lanterns,zodiac,dumplings,firecrackers,lion dance,dragon dance;dragon,festival,celebration,fireworks,family,tradition,lucky,red,gold,spirit;",
+"diwali":"festival of lights,deepavali,diya;diyas,rangoli,lamps;lights,lantern,candle,candles,sweets,festival,celebration,india,fireworks,joy;",
 "thriller":"suspense,suspenseful,tense;tension,conspiracy,chase,twist,danger,espionage,cat and mouse,race against time,edge of your seat,secrets;",
 "drama":"dramatic,emotional story;emotional,family,conflict,relationships,tragedy,heartfelt,personal,grief,moving,character-driven;",
 "crime":"criminal,gangster,mafia,mob;police,heist,underworld,detective,robbery,law,gang,investigation,cop,prison;",
@@ -232,8 +233,9 @@ const KW={
 function clean(s){return String(s).toLowerCase().replace(/[’']/g,"").replace(/[-–]/g," ").replace(/\s+/g," ").trim()}
 const E={},IDX={};
 for(const [k,v] of Object.entries(KW)){
-  const [a,r,x]=v.split(";"),L=z=>z?z.split(",").map(clean).filter(Boolean):[];
-  E[k]={a:[clean(k),...L(a)],r:L(r),x:L(x)};
+  const p=v.split(";");if(p.length===3)p.splice(1,0,""); // older 3-part lines: all related words are supporting
+  const L=z=>z?z.split(",").map(clean).filter(Boolean):[];
+  E[k]={a:[clean(k),...L(p[0])],c:L(p[1]),s:L(p[2]),x:L(p[3]),m:+p[4]||2};
   E[k].a.forEach(t=>{if(!(t in IDX))IDX[t]=k});
 }
 function resolve(raw){
@@ -259,7 +261,7 @@ function norm(raw){
       genre:pick("genre","genres","genres[*].description","tags","category","categories"),
       description:pick("description","short description","desc","summary_text","notes","about","details"),
       date:pick("release date","date"),url:pick("steam url","url"),trailer:pick("trailer","video")};
-  }).filter(g=>g.title);
+  }).filter((g,i,a)=>g.title&&a.findIndex(h=>h.title===g.title)===i);
 }
 function setGames(a){games=a;document.getElementById("count").textContent=games.length+" games loaded"}
 try{const s=localStorage.getItem("gw_games");setGames(s?norm(JSON.parse(s)):norm(SAMPLE))}catch(e){setGames(norm(SAMPLE))}
@@ -292,23 +294,39 @@ function hit(text,t){
   return r.test(text);
 }
 let direct=[],related=[],current="",pool=[],Q=null;
+let HAY=[];
+function scoreGame(e,hay){
+  if(e.x.some(t=>hit(hay,t)))return null;
+  if(e.a.some(t=>hit(hay,t)))return {d:true,sc:0,w:[]};
+  let sc=0;const w=[];
+  for(const t of e.c)if(hit(hay,t)){sc+=2;w.push(t)}
+  for(const t of e.s)if(hit(hay,t)){sc+=1;w.push(t)}
+  return sc>=e.m?{d:false,sc,w}:null;
+}
 function search(){
   direct=[];related=[];
-  for(const g of games){
-    const hay=clean(g.title+" "+g.genre+" "+g.description);
-    g._why="";let d=false,sc=0;const why=[];
+  HAY=games.map(g=>clean(g.title+" "+g.genre+" "+g.description));
+  games.forEach((g,i)=>{
+    const hay=HAY[i];g._why="";let d=false,sc=0;const why=[];
     for(const q of Q.items){
       if(!q.e){if(hit(hay,q.lit))d=true;continue}
-      if(q.e.x.some(t=>hit(hay,t)))continue;
-      if(q.e.a.some(t=>hit(hay,t))){d=true;continue}
-      const w=q.e.r.filter(t=>hit(hay,t));
-      if(w.length>=2){sc+=w.length;why.push(...w.slice(0,3))}
+      const r=scoreGame(q.e,hay);if(!r)continue;
+      if(r.d)d=true;else{sc+=r.sc;why.push(...r.w.slice(0,3))}
     }
     if(d)direct.push(g);
     else if(sc){g._why=why.slice(0,4).join(", ");related.push({g,sc})}
-  }
+  });
   related.sort((a,b)=>b.sc-a.sc);
   related=related.map(x=>x.g);
+}
+function suggestions(){
+  const mine=new Set(Q.items.filter(i=>i.e).flatMap(i=>[...i.e.a,...i.e.c,...i.e.s])),used=new Set(Q.items.map(i=>i.k));
+  return Object.keys(E).filter(k=>!used.has(k)).map(k=>{
+    const e=E[k],ov=[...e.a,...e.c,...e.s].filter(w=>mine.has(w)).length;
+    if(!ov)return null;
+    const n=HAY.filter(h=>{const r=scoreGame(e,h);return r}).length;
+    return n>=3?{k,n,ov}:null;
+  }).filter(Boolean).sort((a,b)=>b.ov-a.ov||b.n-a.n).slice(0,3).map(x=>x.k+" ("+x.n+")");
 }
 function buildPool(){
   pool=direct.concat($("rel").checked?related:[]);
@@ -422,7 +440,8 @@ function go(k){
   document.body.classList.add("themed");confetti();
   size();$("result").innerHTML=pool.length?"":"<p>Nothing matched. Try another keyword.</p>";
   const notes=Q.items.filter(i=>i.note).map(i=>i.note);
-  $("terms").textContent="Matching: "+Q.base.slice(0,8).join(", ")+(notes.length?" · "+notes.join(" · "):"");
+  const sg=pool.length<8&&Q.items.some(i=>i.e)?suggestions():[];
+  $("terms").textContent="Matching: "+Q.base.slice(0,8).join(", ")+(notes.length?" · "+notes.join(" · "):"")+(sg.length?" · Few matches, try: "+sg.join(", "):"");
   draw();startIdle();
 }
 $("kw").addEventListener("keydown",e=>{if(e.key==="Enter"&&$("kw").value.trim())go($("kw").value)});
