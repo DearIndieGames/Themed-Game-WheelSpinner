@@ -58,7 +58,7 @@ canvas{width:100%;height:100%;display:block}
 </head>
 <body>
 <div id="start">
-  <input id="kw" type="text" placeholder="keyword…" autocomplete="off" autofocus>
+  <input id="kw" type="text" placeholder="keyword… (or a few, comma-separated)" autocomplete="off" autofocus>
   <small>press enter</small>
   <div id="pbox" hidden style="margin-top:14px;text-align:center"><textarea id="pj" rows="4" style="width:min(80vw,520px);font-size:.8rem" placeholder="open the sheet link, select all, copy, paste here"></textarea><br><button class="pill" id="pgo">use this data</button></div>
   <div class="tools"><span id="count"></span> · <a id="sync">sync sheet</a> · <a id="paste">paste JSON</a> · <a id="load">upload file</a> · <a id="reset">use samples</a>
@@ -103,7 +103,7 @@ document.body.classList.add(season);
 // ---------- related-theme dictionary ----------
 const THEMES={
 winter:"winter snow snowy ice icy frost frozen freeze arctic antarctic antarctica blizzard polar penguin sled ski yeti tundra snowman|cold cozy holiday fireplace mountain",
-christmas:"christmas xmas santa elf elves reindeer snowman sleigh festive|winter snow holiday gift present toy cozy",
+christmas:"christmas xmas santa reindeer sleigh snowman festive mistletoe yuletide gingerbread krampus nutcracker noel carol advent|winter snow snowy frost frozen holiday gift gifts toy toys elf elves cozy cocoa fireplace",
 snow:"snow snowy snowman snowfall blizzard ice icy frost frozen arctic antarctic winter sled ski|cold mountain polar",
 spring:"spring blossom bloom flower gardening|garden farm farming plant harvest rain nature cozy",
 summer:"summer beach sunny tropical surf vacation|island sun ocean sea swim road trip holiday",
@@ -169,16 +169,20 @@ const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
 const hit=(text,t)=>new RegExp("\\b"+esc(t.replace(/s$/,"")),"i").test(text);
 let direct=[],related=[],current="",pool=[];
 function search(k){
-  current=k;k=k.toLowerCase().trim();
-  const {strong,weak}=relatedTerms(k);
+  current=k;
+  const ks=k.toLowerCase().split(",").map(x=>x.trim()).filter(Boolean);
+  const strong=new Set(),weak=new Set();
+  ks.forEach(x=>{const r=relatedTerms(x);r.strong.forEach(t=>strong.add(t));r.weak.forEach(t=>weak.add(t))});
+  ks.forEach(x=>{strong.delete(x);weak.delete(x)});
   direct=[];related=[];
   for(const g of games){
     const hay=g.title+" "+g.genre+" "+g.description;
-    if(hit(hay,k)){direct.push(g);continue}
-    let score=0;
-    for(const t of strong)if(hit(hay,t))score+=2;
-    for(const t of weak)if(hit(hay,t))score+=1;
-    if(score>=2)related.push({g,score});
+    g._why="";
+    if(ks.some(x=>hit(hay,x))){direct.push(g);continue}
+    let score=0;const why=[];
+    for(const t of strong)if(hit(hay,t)){score+=2;why.push(t)}
+    for(const t of weak)if(!strong.has(t)&&hit(hay,t)){score+=1;why.push(t)}
+    if(score>=2){g._why=why.join(", ");related.push({g,score})}
   }
   related.sort((a,b)=>b.score-a.score);
   related=related.map(x=>x.g);
@@ -239,7 +243,7 @@ function finish(){
   $("result").innerHTML=`<h2></h2><p></p><button class="pill" id="rm">remove & spin again</button>`;
   $("result").querySelector("h2").textContent="🎉 "+g.title;
   const p=$("result").querySelector("p");
-  p.textContent=(g.genre?g.genre+" · ":"")+(g.date?"releases "+g.date+" · ":"")+(isDirect?"keyword match":"related pick");
+  p.textContent=(g.genre?g.genre+" · ":"")+(g.date?"releases "+g.date+" · ":"")+(isDirect?"keyword match":"related ("+(g._why||"")+")");
   if(/^https?:\/\//.test(g.url||"")){const a=document.createElement("a");a.href=g.url;a.target="_blank";a.rel="noopener";a.textContent=" · Steam page";a.style.color="var(--accent)";p.appendChild(a)}
   $("rm").onclick=()=>{pool.splice(winner,1);$("result").innerHTML="";draw()};
   setTimeout(()=>showPop(g),400);
