@@ -102,30 +102,33 @@ const FX={winter:["❄️","❅","❆"],spring:["🌸","🌷","🍃"],summer:["�
 document.body.classList.add(season);
 // ---------- related-theme dictionary ----------
 const THEMES={
-winter:"winter snow snowy ice icy frost frozen freeze arctic antarctic antarctica blizzard cold polar penguin sled ski holiday christmas cozy fireplace yeti tundra",
-christmas:"christmas holiday santa gift present winter snow elf reindeer festive cozy",
-snow:"snow snowy winter ice frost frozen arctic blizzard cold polar mountain ski sled",
-spring:"spring bloom blossom flower garden farm farming plant harvest rain rebirth growth nature",
-summer:"summer beach sun sunny island ocean sea tropical vacation surf swim road trip holiday",
-autumn:"autumn fall harvest leaves pumpkin spooky cozy forest farm halloween thanksgiving",
-halloween:"halloween horror ghost haunted spooky witch zombie vampire monster skeleton pumpkin curse demon",
-horror:"horror scary ghost haunted fear terror zombie monster nightmare survival creepy dark",
-cozy:"cozy cozy relaxing gentle peaceful farm farming cooking garden life sim cute wholesome",
-space:"space galaxy planet star alien sci-fi orbit rocket cosmos station",
-ocean:"ocean sea underwater fishing fish boat sailing island diving pirate beach",
-farm:"farm farming crops harvest plant garden animals village life sim",
-fantasy:"fantasy magic wizard dragon sword quest kingdom medieval witch spirit",
-romance:"romance love dating relationship heart wedding valentine",
-survival:"survival survive wilderness crafting craft hunger cold frozen wasteland",
-racing:"racing race car drive speed kart motor rally",
-puzzle:"puzzle logic brain riddle match escape"};
+winter:"winter snow snowy ice icy frost frozen freeze arctic antarctic antarctica blizzard polar penguin sled ski yeti tundra snowman|cold cozy holiday fireplace mountain",
+christmas:"christmas xmas santa elf elves reindeer snowman sleigh festive|winter snow holiday gift present toy cozy",
+snow:"snow snowy snowman snowfall blizzard ice icy frost frozen arctic antarctic winter sled ski|cold mountain polar",
+spring:"spring blossom bloom flower gardening|garden farm farming plant harvest rain nature cozy",
+summer:"summer beach sunny tropical surf vacation|island sun ocean sea swim road trip holiday",
+autumn:"autumn pumpkin harvest thanksgiving leaves|fall spooky cozy forest farm halloween",
+halloween:"halloween ghost haunted witch zombie vampire skeleton pumpkin curse demon spooky|horror monster dark creepy occult",
+horror:"horror scary ghost haunted terror zombie nightmare creepy|monster dark survival fear",
+cozy:"cozy wholesome relaxing gentle peaceful|farm farming cooking garden cute life sim",
+space:"space galaxy planet alien sci-fi orbit rocket cosmos asteroid|star station",
+ocean:"ocean sea underwater fishing sailing diving pirate beach|boat island fish",
+farm:"farm farming crops harvest|plant garden animals village life",
+fantasy:"fantasy magic wizard dragon kingdom medieval witch|sword quest spirit",
+romance:"romance love dating wedding valentine|relationship heart",
+survival:"survival survive wilderness crafting|craft hunger cold wasteland frozen",
+racing:"racing race kart rally|car drive speed motor",
+puzzle:"puzzle logic riddle|brain match escape"};
+// Strong words (before "|") score 2, weak words score 1. A game needs a total of 2+ to count as related.
 function relatedTerms(k){
-  const out=new Set();
+  const strong=new Set(),weak=new Set();
   for(const [key,list] of Object.entries(THEMES)){
-    const words=list.split(" ");
-    if(key===k||words.includes(k)||key.startsWith(k)&&k.length>2) words.forEach(w=>out.add(w));
+    const [s,w]=list.split("|");const sw=s.split(" "),ww=(w||"").split(" ").filter(Boolean);
+    if(key===k||sw.includes(k)||ww.includes(k)||key.startsWith(k)&&k.length>2){sw.forEach(x=>strong.add(x));ww.forEach(x=>weak.add(x))}
   }
-  out.delete(k); return [...out];
+  strong.delete(k);weak.delete(k);
+  for(const x of strong)weak.delete(x);
+  return {strong,weak};
 }
 // ---------- data ----------
 let games=[];
@@ -167,13 +170,18 @@ const hit=(text,t)=>new RegExp("\\b"+esc(t.replace(/s$/,"")),"i").test(text);
 let direct=[],related=[],current="",pool=[];
 function search(k){
   current=k;k=k.toLowerCase().trim();
-  const rel=relatedTerms(k);
+  const {strong,weak}=relatedTerms(k);
   direct=[];related=[];
   for(const g of games){
     const hay=g.title+" "+g.genre+" "+g.description;
-    if(hit(hay,k)) direct.push(g);
-    else if(rel.some(t=>hit(hay,t))) related.push(g);
+    if(hit(hay,k)){direct.push(g);continue}
+    let score=0;
+    for(const t of strong)if(hit(hay,t))score+=2;
+    for(const t of weak)if(hit(hay,t))score+=1;
+    if(score>=2)related.push({g,score});
   }
+  related.sort((a,b)=>b.score-a.score);
+  related=related.map(x=>x.g);
 }
 function buildPool(){
   const p=direct.concat($("rel").checked?related:[]);
