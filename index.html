@@ -54,12 +54,15 @@ canvas{width:100%;height:100%;display:block}
 #popcard .desc{line-height:1.5;margin:12px 0 0}
 #popcard .sm{font-size:.8rem;opacity:.7;margin:0 0 6px}
 #popcard .x{position:absolute;top:6px;right:10px;border:0;background:transparent;color:#2a2a2a;font-size:1.7rem;cursor:pointer;line-height:1}
+#live{position:absolute;top:calc(env(safe-area-inset-top,0px) + 62px);left:50%;transform:translateX(-50%);background:var(--card);padding:6px 14px;border-radius:99px;max-width:80vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:3;font-size:.95rem}
+#live:empty{display:none}
+#terms{font-size:.75rem;opacity:.7;text-align:center;padding:2px 16px;max-width:92vw}
 </style>
 </head>
 <body>
 <div id="start">
-  <input id="kw" type="text" placeholder="keyword… (or a few, comma-separated)" autocomplete="off" autofocus>
-  <small>press enter</small>
+  <input id="kw" type="text" placeholder="keyword or month…" autocomplete="off" autofocus>
+  <small id="hint">press enter</small>
   <div id="pbox" hidden style="margin-top:14px;text-align:center"><textarea id="pj" rows="4" style="width:min(80vw,520px);font-size:.8rem" placeholder="open the sheet link, select all, copy, paste here"></textarea><br><button class="pill" id="pgo">use this data</button></div>
   <div class="tools"><span id="count"></span> · <a id="sync">sync sheet</a> · <a id="paste">paste JSON</a> · <a id="load">upload file</a> · <a id="reset">use samples</a>
   <input id="file" type="file" accept=".json,application/json" hidden></div>
@@ -69,8 +72,10 @@ canvas{width:100%;height:100%;display:block}
     <button class="pill" id="back">← new keyword</button>
     <div class="info"><div id="stats"></div><label><input type="checkbox" id="rel" checked> include related games</label></div>
   </div>
+  <div id="live"></div>
   <div id="wrap"><canvas id="cv"></canvas><button id="spin">SPIN</button></div>
   <div id="result"></div>
+  <div id="terms"></div>
   <div id="pop"><div id="popcard"></div></div>
 </div>
 <script>
@@ -100,35 +105,58 @@ summer:["#f5a623","#2cb5d6","#ffd23f","#ee6c4d","#3fc1a5","#f78fb3"],
 autumn:["#c8561e","#e09a2d","#8c3b14","#d97b3a","#a8692a","#b5382a"]};
 const FX={winter:["❄️","❅","❆"],spring:["🌸","🌷","🍃"],summer:["☀️","🌊","🌴"],autumn:["🍂","🍁","🎃"]};
 document.body.classList.add(season);
-// ---------- related-theme dictionary ----------
-const THEMES={
-winter:"winter snow snowy ice icy frost frozen freeze arctic antarctic antarctica blizzard polar penguin sled ski yeti tundra snowman|cold cozy holiday fireplace mountain",
-christmas:"christmas xmas santa reindeer sleigh snowman festive mistletoe yuletide gingerbread krampus nutcracker noel carol advent|winter snow snowy frost frozen holiday gift gifts toy toys elf elves cozy cocoa fireplace",
-snow:"snow snowy snowman snowfall blizzard ice icy frost frozen arctic antarctic winter sled ski|cold mountain polar",
-spring:"spring blossom bloom flower gardening|garden farm farming plant harvest rain nature cozy",
-summer:"summer beach sunny tropical surf vacation|island sun ocean sea swim road trip holiday",
-autumn:"autumn pumpkin harvest thanksgiving leaves|fall spooky cozy forest farm halloween",
-halloween:"halloween ghost haunted witch zombie vampire skeleton pumpkin curse demon spooky|horror monster dark creepy occult",
-horror:"horror scary ghost haunted terror zombie nightmare creepy|monster dark survival fear",
-cozy:"cozy wholesome relaxing gentle peaceful|farm farming cooking garden cute life sim",
-space:"space galaxy planet alien sci-fi orbit rocket cosmos asteroid|star station",
-ocean:"ocean sea underwater fishing sailing diving pirate beach|boat island fish",
-farm:"farm farming crops harvest|plant garden animals village life",
-fantasy:"fantasy magic wizard dragon kingdom medieval witch|sword quest spirit",
-romance:"romance love dating wedding valentine|relationship heart",
-survival:"survival survive wilderness crafting|craft hunger cold wasteland frozen",
-racing:"racing race kart rally|car drive speed motor",
-puzzle:"puzzle logic riddle|brain match escape"};
-// Strong words (before "|") score 2, weak words score 1. A game needs a total of 2+ to count as related.
-function relatedTerms(k){
-  const strong=new Set(),weak=new Set();
-  for(const [key,list] of Object.entries(THEMES)){
-    const [s,w]=list.split("|");const sw=s.split(" "),ww=(w||"").split(" ").filter(Boolean);
-    if(key===k||sw.includes(k)||ww.includes(k)||key.startsWith(k)&&k.length>2){sw.forEach(x=>strong.add(x));ww.forEach(x=>weak.add(x))}
+// ---------- related words: Datamuse + ConceptNet (no hand-written theme lists) ----------
+const COUNTRY="US"; // country used for public holidays (Nager.Date)
+const MONTHS=["january","february","march","april","may","june","july","august","september","october","november","december"];
+const SEASON=["winter","winter","spring","spring","spring","summer","summer","summer","autumn","autumn","autumn","winter"]; // Northern Hemisphere
+const OBS={1:["new year"],2:["valentine"],3:["st patrick","easter"],4:["easter"],7:["fireworks"],10:["halloween"],11:["thanksgiving"],12:["christmas","new year","hanukkah"]}; // gaps Nager.Date doesn't cover
+const STOP=new Set("the and for with game games play player players world new day days time year years life way man one two get use make good great also like just more most some very can will thing things people place work".split(" "));
+function monthIndex(w){w=w.toLowerCase().replace(/\./g,"");if(w==="sept")return 8;return MONTHS.findIndex(m=>m===w||(w.length===3&&m.startsWith(w)))}
+const clean=w=>String(w).toLowerCase().replace(/[’']/g,"").trim();
+const okWord=w=>w.length>2&&!STOP.has(w)&&/^[a-z][a-z \-]*$/.test(w);
+async function getJSON(url,ms=7000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(url,{signal:c.signal});if(!r.ok)throw new Error("http");return await r.json()}finally{clearTimeout(t)}}
+const cacheGet=k=>{try{const v=JSON.parse(localStorage.getItem(k));if(v&&Date.now()-v.t<6048e5)return v.d}catch(_){}return null};
+const cacheSet=(k,d)=>{try{localStorage.setItem(k,JSON.stringify({t:Date.now(),d}))}catch(_){}};
+let svc={dm:true,cn:true,nh:true};
+async function expand(term){
+  const key="gw_x_"+term,c0=cacheGet(key);if(c0)return c0;
+  const q=encodeURIComponent(term);
+  const [dm,cn]=await Promise.all([
+    Promise.all([getJSON("https://api.datamuse.com/words?ml="+q+"&max=40"),getJSON("https://api.datamuse.com/words?rel_trg="+q+"&max=30")])
+      .then(a=>[...new Set(a.flat().map(x=>clean(x.word)).filter(okWord))]).catch(()=>null),
+    getJSON("https://api.conceptnet.io/related/c/en/"+encodeURIComponent(term.replace(/ /g,"_"))+"?filter=/c/en&limit=40")
+      .then(j=>[...new Set((j.related||[]).map(r=>clean(String(r["@id"]).replace("/c/en/","").replace(/_/g," "))).filter(okWord))]).catch(()=>null)
+  ]);
+  if(!dm)svc.dm=false;if(!cn)svc.cn=false;
+  const strong=[],weak=[];
+  if(dm&&cn){const cs=new Set(cn),ds=new Set(dm);dm.forEach(w=>(cs.has(w)?strong:weak).push(w));cn.forEach(w=>{if(!ds.has(w))weak.push(w)})}
+  else{const l=dm||cn||[];l.forEach((w,i)=>(i<10?strong:weak).push(w))}
+  const d={strong,weak};if(dm&&cn)cacheSet(key,d);return d;
+}
+async function holidayTerms(m){
+  try{
+    const y=new Date().getFullYear(),key="gw_h_"+COUNTRY+y;let list=cacheGet(key);
+    if(!list){list=await getJSON("https://date.nager.at/api/v3/PublicHolidays/"+y+"/"+COUNTRY);cacheSet(key,list)}
+    return list.filter(h=>parseInt(h.date.slice(5,7))-1===m)
+      .map(h=>clean(h.name).replace(/[^a-z ]/g," ").replace(/\bday\b/g,"").replace(/\s+/g," ").trim())
+      .filter(n=>n&&n.split(" ").length<=2&&okWord(n));
+  }catch(_){svc.nh=false;return []}
+}
+async function buildQuery(raw){
+  svc={dm:true,cn:true,nh:true};
+  let base=[];
+  for(const t of raw.split(",").map(x=>x.trim()).filter(Boolean)){
+    const mi=monthIndex(t);
+    if(mi>=0)base.push(SEASON[mi],...(OBS[mi]||[]),...await holidayTerms(mi));
+    else base.push(clean(t));
   }
-  strong.delete(k);weak.delete(k);
-  for(const x of strong)weak.delete(x);
-  return {strong,weak};
+  base=[...new Set(base)];
+  const ex=await Promise.all(base.map(expand));
+  const strong=new Set(),weak=new Set();
+  ex.forEach(e=>{e.strong.forEach(w=>strong.add(w));e.weak.forEach(w=>weak.add(w))});
+  base.forEach(b=>{strong.delete(b);weak.delete(b)});
+  strong.forEach(w=>weak.delete(w));
+  return {base,strong,weak};
 }
 // ---------- data ----------
 let games=[];
@@ -166,31 +194,30 @@ $("pgo").onclick=()=>ingest($("pj").value);
 if(location.protocol.startsWith("http")){fetch(SHEET).then(r=>r.json()).then(raw=>{const g=norm(raw);if(g.length){setGames(g);try{localStorage.setItem("gw_games",JSON.stringify(g))}catch(_){}}}).catch(()=>{})}
 // ---------- matching ----------
 const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
-const hit=(text,t)=>new RegExp("\\b"+esc(t.replace(/s$/,"")),"i").test(text);
-let direct=[],related=[],current="",pool=[];
-function search(k){
-  current=k;
-  const ks=k.toLowerCase().split(",").map(x=>x.trim()).filter(Boolean);
-  const strong=new Set(),weak=new Set();
-  ks.forEach(x=>{const r=relatedTerms(x);r.strong.forEach(t=>strong.add(t));r.weak.forEach(t=>weak.add(t))});
-  ks.forEach(x=>{strong.delete(x);weak.delete(x)});
+const reCache=new Map();
+function hit(text,t){
+  let r=reCache.get(t);
+  if(!r){r=t.length<=4?new RegExp("\\b"+esc(t)+"(?:s|es)?\\b","i"):new RegExp("\\b"+esc(t.replace(/s$/,"")),"i");reCache.set(t,r)}
+  return r.test(text);
+}
+let direct=[],related=[],current="",pool=[],Q=null;
+function search(){
   direct=[];related=[];
   for(const g of games){
-    const hay=g.title+" "+g.genre+" "+g.description;
+    const hay=clean(g.title+" "+g.genre+" "+g.description);
     g._why="";
-    if(ks.some(x=>hit(hay,x))){direct.push(g);continue}
+    if(Q.base.some(t=>hit(hay,t))){direct.push(g);continue}
     let score=0;const why=[];
-    for(const t of strong)if(hit(hay,t)){score+=2;why.push(t)}
-    for(const t of weak)if(!strong.has(t)&&hit(hay,t)){score+=1;why.push(t)}
-    if(score>=2){g._why=why.join(", ");related.push({g,score})}
+    for(const t of Q.strong)if(hit(hay,t)){score+=2;why.push(t)}
+    for(const t of Q.weak)if(hit(hay,t)){score+=1;why.push(t)}
+    if(score>=2){g._why=why.slice(0,4).join(", ");related.push({g,score})}
   }
   related.sort((a,b)=>b.score-a.score);
   related=related.map(x=>x.g);
 }
 function buildPool(){
-  const p=direct.concat($("rel").checked?related:[]);
-  pool=p.slice(0,24);
-  $("stats").textContent=`“${current}” · ${direct.length} direct`+($("rel").checked?` + ${related.length} related`:"")+(p.length>24?" (showing 24)":"");
+  pool=direct.concat($("rel").checked?related:[]);
+  $("stats").textContent=`“${current}” · ${direct.length} direct`+($("rel").checked?` + ${related.length} related`:"");
 }
 // ---------- wheel ----------
 const cv=$("cv"),ctx=cv.getContext("2d");
@@ -199,21 +226,25 @@ function size(){const d=devicePixelRatio||1,w=cv.clientWidth;cv.width=cv.height=
 function draw(){
   const w=cv.clientWidth,c=w/2,r=c-10,n=pool.length;
   ctx.clearRect(0,0,w,w);
-  if(!n){ctx.fillStyle="rgba(0,0,0,.4)";ctx.font="20px Georgia";ctx.textAlign="center";ctx.fillText("No games found",c,c-80);return}
+  if(!n){$("live").textContent="";ctx.fillStyle="rgba(0,0,0,.4)";ctx.font="20px Georgia";ctx.textAlign="center";ctx.fillText("No games found",c,c-80);return}
   const step=2*Math.PI/n,pal=PAL[season];
+  const fs=Math.min(18,r*step*0.62),labels=fs>=8;
   for(let i=0;i<n;i++){
     const a=rot+i*step;
     ctx.beginPath();ctx.moveTo(c,c);ctx.arc(c,c,r,a,a+step);ctx.closePath();
     ctx.fillStyle=pal[i%pal.length];ctx.fill();
-    ctx.strokeStyle="rgba(255,255,255,.8)";ctx.lineWidth=2;ctx.stroke();
+    ctx.strokeStyle="rgba(255,255,255,.8)";ctx.lineWidth=n>60?0.6:2;ctx.stroke();
+    if(!labels)continue;
     ctx.save();ctx.translate(c,c);ctx.rotate(a+step/2);
     ctx.fillStyle="#fff";ctx.shadowColor="rgba(0,0,0,.45)";ctx.shadowBlur=3;
-    ctx.font=`700 ${Math.max(10,Math.min(18,w/(n*1.5)+7))}px Georgia`;
+    ctx.font=`700 ${fs}px Georgia`;
     ctx.textAlign="right";ctx.textBaseline="middle";
     let t=pool[i].title;if(t.length>22)t=t.slice(0,21)+"…";
     ctx.fillText(t,r-14,0);ctx.restore();
   }
   ctx.beginPath();ctx.arc(c,c,r,0,7);ctx.lineWidth=8;ctx.strokeStyle="#fff";ctx.stroke();
+  const ix=Math.floor((((-Math.PI/2-rot)%(2*Math.PI))+2*Math.PI)%(2*Math.PI)/step)%n;
+  $("live").textContent=labels?"":pool[ix].title;
   // pointer
   ctx.beginPath();ctx.moveTo(c-14,2);ctx.lineTo(c+14,2);ctx.lineTo(c,32);ctx.closePath();
   ctx.fillStyle="#d22";ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();ctx.fill();
@@ -287,11 +318,18 @@ function confetti(){
     document.body.appendChild(s);
   }
 }
-function go(k){
-  search(k);buildPool();
+async function go(k){
+  $("kw").disabled=true;$("hint").textContent="finding related words…";
+  try{Q=await buildQuery(k)}catch(e){Q={base:[clean(k)],strong:new Set(),weak:new Set()}}
+  $("kw").disabled=false;$("hint").textContent="press enter";
+  current=k;search();buildPool();
   $("start").style.display="none";$("app").style.display="flex";
   document.body.classList.add("themed");confetti();
   size();$("result").innerHTML=pool.length?"":"<p>Nothing matched. Try another keyword.</p>";
+  const st=[];
+  if(!svc.dm&&!svc.cn)st.push("word services unreachable, exact matches only");
+  else{if(!svc.cn)st.push("ConceptNet unavailable, using Datamuse only");if(!svc.dm)st.push("Datamuse unavailable, using ConceptNet only")}
+  $("terms").textContent="Searching: "+Q.base.slice(0,8).join(", ")+(st.length?" · "+st.join(" · "):"");
   draw();startIdle();
 }
 $("kw").addEventListener("keydown",e=>{if(e.key==="Enter"&&$("kw").value.trim())go($("kw").value)});
