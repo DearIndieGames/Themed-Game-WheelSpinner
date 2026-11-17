@@ -14,10 +14,10 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--fg);font-family:Georgia,"Times New Roman",serif;overflow:hidden}
 body.themed{background:linear-gradient(160deg,var(--bg2),var(--bg3));transition:background .6s}
-body.winter{--bg2:#dff0fb;--bg3:#a9c7e8;--fg:#17324d;--accent:#2f6fb0}
-body.spring{--bg2:#fdeef4;--bg3:#bfe6c4;--fg:#3b2a3a;--accent:#d9568a}
-body.summer{--bg2:#fff3b8;--bg3:#7fd6e8;--fg:#17394a;--accent:#f08a1c}
-body.autumn{--bg2:#fbe3b8;--bg3:#d9823b;--fg:#43210f;--accent:#b4491c}
+body.themed.winter{--card:rgba(255,255,255,.78);--bg2:#dff0fb;--bg3:#a9c7e8;--fg:#17324d;--accent:#2f6fb0}
+body.themed.spring{--card:rgba(255,255,255,.78);--bg2:#fdeef4;--bg3:#bfe6c4;--fg:#3b2a3a;--accent:#d9568a}
+body.themed.summer{--card:rgba(255,255,255,.78);--bg2:#fff3b8;--bg3:#7fd6e8;--fg:#17394a;--accent:#f08a1c}
+body.themed.autumn{--card:rgba(255,255,255,.78);--bg2:#fbe3b8;--bg3:#d9823b;--fg:#43210f;--accent:#b4491c}
 #start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:5}
 #start input{font:inherit;font-size:clamp(1.6rem,6vw,2.6rem);text-align:center;border:0;border-bottom:2px solid var(--muted);background:transparent;color:var(--fg);outline:none;width:min(80vw,520px);padding:.4em}
 #start input:focus{border-color:var(--accent)}
@@ -56,7 +56,7 @@ canvas{width:100%;height:100%;display:block}
 #popcard .x{position:absolute;top:6px;right:10px;border:0;background:transparent;color:#2a2a2a;font-size:1.7rem;cursor:pointer;line-height:1}
 #live{position:absolute;top:calc(env(safe-area-inset-top,0px) + 62px);left:50%;transform:translateX(-50%);background:var(--card);padding:6px 14px;border-radius:99px;max-width:80vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:3;font-size:.95rem}
 #live:empty{display:none}
-#terms{font-size:.75rem;opacity:.7;text-align:center;padding:2px 16px;max-width:92vw}
+#terms{font-size:.75rem;opacity:.85;text-align:center;padding:2px 16px;max-width:92vw}
 </style>
 </head>
 <body>
@@ -105,11 +105,11 @@ summer:["#f5a623","#2cb5d6","#ffd23f","#ee6c4d","#3fc1a5","#f78fb3"],
 autumn:["#c8561e","#e09a2d","#8c3b14","#d97b3a","#a8692a","#b5382a"]};
 const FX={winter:["❄️","❅","❆"],spring:["🌸","🌷","🍃"],summer:["☀️","🌊","🌴"],autumn:["🍂","🍁","🎃"]};
 document.body.classList.add(season);
-// ---------- related words: Datamuse + ConceptNet (no hand-written theme lists) ----------
-const COUNTRY="US"; // country used for public holidays (Nager.Date)
+// ---------- related words: Datamuse + Wikipedia (no hand-written theme lists) ----------
+const COUNTRY="GB"; // country used for public holidays (Nager.Date); change to e.g. "IE", "DE", "FR"
 const MONTHS=["january","february","march","april","may","june","july","august","september","october","november","december"];
 const SEASON=["winter","winter","spring","spring","spring","summer","summer","summer","autumn","autumn","autumn","winter"]; // Northern Hemisphere
-const OBS={1:["new year"],2:["valentine"],3:["st patrick","easter"],4:["easter"],7:["fireworks"],10:["halloween"],11:["thanksgiving"],12:["christmas","new year","hanukkah"]}; // gaps Nager.Date doesn't cover
+const OBS={1:["new year","burns night"],2:["valentine","pancake day"],3:["st patrick","easter","mothering sunday"],4:["easter","st george"],10:["halloween"],11:["bonfire night","remembrance"],12:["christmas","new year","hanukkah"]}; // gaps Nager.Date does not cover
 const STOP=new Set("the and for with game games play player players world new day days time year years life way man one two get use make good great also like just more most some very can will thing things people place work".split(" "));
 function monthIndex(w){w=w.toLowerCase().replace(/\./g,"");if(w==="sept")return 8;return MONTHS.findIndex(m=>m===w||(w.length===3&&m.startsWith(w)))}
 const clean=w=>String(w).toLowerCase().replace(/[’']/g,"").trim();
@@ -117,33 +117,52 @@ const okWord=w=>w.length>2&&!STOP.has(w)&&/^[a-z][a-z \-]*$/.test(w);
 async function getJSON(url,ms=7000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(url,{signal:c.signal});if(!r.ok)throw new Error("http");return await r.json()}finally{clearTimeout(t)}}
 const cacheGet=k=>{try{const v=JSON.parse(localStorage.getItem(k));if(v&&Date.now()-v.t<6048e5)return v.d}catch(_){}return null};
 const cacheSet=(k,d)=>{try{localStorage.setItem(k,JSON.stringify({t:Date.now(),d}))}catch(_){}};
-let svc={dm:true,cn:true,nh:true};
+let svc={dm:true,wk:true,nh:true};
+const WSTOP=new Set("also first known called often many during most used including however although since between several various part form people country countries states united state british english european western term name named usually around early late became become according major common other another within among period number large small high long place areas area general using given following later began such this that with from have were which their there been they these those into than then them when where while about after before over under more some other only both each most made make well while would could should will your what year years century history time times world used uses use used".split(" "));
+const stem=w=>w.replace(/(ies|es|s)$/,"");
+async function wikiWords(term){
+  const u="https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&generator=search&gsrnamespace=0&gsrlimit=1&gsrsearch="+encodeURIComponent(term)+"&prop=extracts&explaintext=1&exchars=8000";
+  const j=await getJSON(u,9000);
+  const p=Object.values((j.query&&j.query.pages)||{})[0];
+  if(!p||!p.extract)throw new Error("no article");
+  const m=new Map();
+  (p.extract.toLowerCase().match(/[a-z]{4,}/g)||[]).forEach(w=>{if(okWord(w)&&!WSTOP.has(w))m.set(w,(m.get(w)||0)+1)});
+  return [...m].map(([w,n])=>({w,n})).sort((a,b)=>b.n-a.n);
+}
 async function expand(term){
-  const key="gw_x_"+term,c0=cacheGet(key);if(c0)return c0;
-  const q=encodeURIComponent(term);
-  const [dm,cn]=await Promise.all([
-    Promise.all([getJSON("https://api.datamuse.com/words?ml="+q+"&max=40"),getJSON("https://api.datamuse.com/words?rel_trg="+q+"&max=30")])
-      .then(a=>[...new Set(a.flat().map(x=>clean(x.word)).filter(okWord))]).catch(()=>null),
-    getJSON("https://api.conceptnet.io/related/c/en/"+encodeURIComponent(term.replace(/ /g,"_"))+"?filter=/c/en&limit=40")
-      .then(j=>[...new Set((j.related||[]).map(r=>clean(String(r["@id"]).replace("/c/en/","").replace(/_/g," "))).filter(okWord))]).catch(()=>null)
+  const key="gw_x2_"+term,c0=cacheGet(key);if(c0)return c0;
+  const q=encodeURIComponent(term),tidy=a=>a.map(x=>clean(x.word)).filter(okWord);
+  const [ml,trg,wk]=await Promise.all([
+    getJSON("https://api.datamuse.com/words?ml="+q+"&max=40").then(tidy).catch(()=>null),
+    getJSON("https://api.datamuse.com/words?rel_trg="+q+"&max=30").then(tidy).catch(()=>null),
+    wikiWords(term).catch(()=>null)
   ]);
-  if(!dm)svc.dm=false;if(!cn)svc.cn=false;
+  const dm=(ml||trg)?[...new Set([...(ml||[]),...(trg||[])])]:null;
+  if(!dm)svc.dm=false;if(!wk)svc.wk=false;
   const strong=[],weak=[];
-  if(dm&&cn){const cs=new Set(cn),ds=new Set(dm);dm.forEach(w=>(cs.has(w)?strong:weak).push(w));cn.forEach(w=>{if(!ds.has(w))weak.push(w)})}
-  else{const l=dm||cn||[];l.forEach((w,i)=>(i<10?strong:weak).push(w))}
-  const d={strong,weak};if(dm&&cn)cacheSet(key,d);return d;
+  if(dm&&wk){
+    const ws=new Set(wk.map(x=>stem(x.w))),ds=new Set(dm.map(stem));
+    dm.forEach(w=>(ws.has(stem(w))?strong:weak).push(w));
+    wk.forEach(x=>{if(x.n>=3&&!ds.has(stem(x.w)))weak.push(x.w)});
+  }else if(dm){
+    const a=new Set(ml||[]),b=new Set(trg||[]);
+    dm.forEach((w,i)=>((a.has(w)&&b.has(w))||i<6?strong:weak).push(w));
+  }else if(wk){
+    wk.forEach(x=>{if(x.n>=5)strong.push(x.w);else if(x.n>=2)weak.push(x.w)});
+  }
+  const d={strong,weak};if(dm&&wk)cacheSet(key,d);return d;
 }
 async function holidayTerms(m){
   try{
     const y=new Date().getFullYear(),key="gw_h_"+COUNTRY+y;let list=cacheGet(key);
     if(!list){list=await getJSON("https://date.nager.at/api/v3/PublicHolidays/"+y+"/"+COUNTRY);cacheSet(key,list)}
-    return list.filter(h=>parseInt(h.date.slice(5,7))-1===m)
+    return list.filter(h=>h.global!==false&&parseInt(h.date.slice(5,7))-1===m&&!/bank holiday|boxing/i.test(h.name))
       .map(h=>clean(h.name).replace(/[^a-z ]/g," ").replace(/\bday\b/g,"").replace(/\s+/g," ").trim())
       .filter(n=>n&&n.split(" ").length<=2&&okWord(n));
   }catch(_){svc.nh=false;return []}
 }
 async function buildQuery(raw){
-  svc={dm:true,cn:true,nh:true};
+  svc={dm:true,wk:true,nh:true};
   let base=[];
   for(const t of raw.split(",").map(x=>x.trim()).filter(Boolean)){
     const mi=monthIndex(t);
@@ -236,7 +255,8 @@ function draw(){
     ctx.strokeStyle="rgba(255,255,255,.8)";ctx.lineWidth=n>60?0.6:2;ctx.stroke();
     if(!labels)continue;
     ctx.save();ctx.translate(c,c);ctx.rotate(a+step/2);
-    ctx.fillStyle="#fff";ctx.shadowColor="rgba(0,0,0,.45)";ctx.shadowBlur=3;
+    const dk=lum(pal[i%pal.length])>0.3;
+    ctx.fillStyle=dk?"#1b1b1b":"#fff";ctx.shadowColor=dk?"transparent":"rgba(0,0,0,.45)";ctx.shadowBlur=dk?0:3;
     ctx.font=`700 ${fs}px Georgia`;
     ctx.textAlign="right";ctx.textBaseline="middle";
     let t=pool[i].title;if(t.length>22)t=t.slice(0,21)+"…";
@@ -249,6 +269,7 @@ function draw(){
   ctx.beginPath();ctx.moveTo(c-14,2);ctx.lineTo(c+14,2);ctx.lineTo(c,32);ctx.closePath();
   ctx.fillStyle="#d22";ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();ctx.fill();
 }
+function lum(h){const n=parseInt(h.slice(1),16),f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(n>>16&255)+.7152*f(n>>8&255)+.0722*f(n&255)}
 let last=0;
 function idle(t){
   if(spinning)return;
@@ -327,8 +348,8 @@ async function go(k){
   document.body.classList.add("themed");confetti();
   size();$("result").innerHTML=pool.length?"":"<p>Nothing matched. Try another keyword.</p>";
   const st=[];
-  if(!svc.dm&&!svc.cn)st.push("word services unreachable, exact matches only");
-  else{if(!svc.cn)st.push("ConceptNet unavailable, using Datamuse only");if(!svc.dm)st.push("Datamuse unavailable, using ConceptNet only")}
+  if(!svc.dm&&!svc.wk)st.push("word services unreachable, exact matches only");
+  else{if(!svc.wk)st.push("Wikipedia unavailable, using Datamuse only");if(!svc.dm)st.push("Datamuse unavailable, using Wikipedia only")}
   $("terms").textContent="Searching: "+Q.base.slice(0,8).join(", ")+(st.length?" · "+st.join(" · "):"");
   draw();startIdle();
 }
